@@ -1,5 +1,5 @@
 #pragma once
-#ifndef GTASA
+
 #include <plugin.h>
 #include <CRGBA.h>
 #include "WalkManConfig.h"
@@ -58,6 +58,7 @@ struct KeyConfig
     unsigned char listChoose;
 };
 
+#ifndef GTASA
 // Miles Sound System function types
 typedef void(__stdcall* p_AIL_close_stream)(unsigned int);
 typedef void(__stdcall* p_AIL_stream_ms_position)(unsigned int, unsigned int*, unsigned int*);

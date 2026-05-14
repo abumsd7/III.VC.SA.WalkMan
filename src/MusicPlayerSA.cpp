@@ -1,5 +1,6 @@
 #ifdef GTASA
 #include "../includes/MusicPlayerSA.h"
+#include "../includes/MusicPlayer.h"
 #include <plugin.h>
 #include <CPad.h>
 #include <CTimer.h>
@@ -8,6 +9,7 @@
 #include <patch.h>
 #include <filesystem>
 
+using namespace plugin;
 namespace fs = std::filesystem;
 
 // Static member definitions
