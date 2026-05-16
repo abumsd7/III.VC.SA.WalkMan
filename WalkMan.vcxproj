@@ -319,17 +319,27 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="src\MP3Injection.cpp" />
     <ClCompile Include="src\MusicPlayer.cpp" />
     <ClCompile Include="src\DrawPlayer.cpp" />
     <ClCompile Include="src\MusicPlayerSA.cpp" />
     <ClCompile Include="src\WalkManConfig.cpp" />
+    <ClCompile Include="src\WalkmanState.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="includes\InputHandler.h" />
+    <ClInclude Include="includes\MP3Injection.h" />
     <ClInclude Include="includes\MusicPlayer.h" />
     <ClInclude Include="includes\DrawPlayer.h" />
     <ClInclude Include="includes\MusicPlayerSA.h" />
+    <ClInclude Include="includes\PadHelper.h" />
     <ClInclude Include="includes\SomeMacros.h" />
     <ClInclude Include="includes\WalkManConfig.h" />
+    <ClInclude Include="includes\WalkmanState.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitattributes" />
+    <None Include=".gitignore" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

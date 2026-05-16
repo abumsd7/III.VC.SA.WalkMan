@@ -1,6 +1,7 @@
 #ifdef GTASA
 #include "../includes/MusicPlayerSA.h"
 #include "../includes/MusicPlayer.h"
+#include "../includes/MP3Injection.h"
 #include <plugin.h>
 #include <CPad.h>
 #include <CTimer.h>
@@ -13,28 +14,14 @@ using namespace plugin;
 namespace fs = std::filesystem;
 
 // Static member definitions
-Mp3Station MusicPlayerSA::mp3Stations[10];
-int MusicPlayerSA::currentStation = 0;
-int MusicPlayerSA::stationCount = 0;
-int MusicPlayerSA::skipping = 0;
-int MusicPlayerSA::fade = 0;
-bool MusicPlayerSA::listActive = false;
-int MusicPlayerSA::listCurrentItem = 0;
-float MusicPlayerSA::listAlpha = 0.0f;
-float MusicPlayerSA::listFade = 0.0f;
 DWORD MusicPlayerSA::walkmanStream = 0;
-int MusicPlayerSA::walkmanVolume = 64;
 
 #define SA_RADIO_STATION_COUNT 13
 #define SA_RADIO_OFF 13
 
-// Global pointers for DrawPlayer.cpp compatibility
-static unsigned int curTrackCount = 0;
-static unsigned int curTrackIndex = 0;
-unsigned int* gameTrackCount = &curTrackCount;
-unsigned int* gameCurrentTrack = &curTrackIndex;
+// Global pointers for WalkmanState compatibility
+
 unsigned char* gameDisableKeyboard2 = (unsigned char*)0xBA6815;
-unsigned char* gameUserPause = (unsigned char*)0xB7CB49;
 
 const char* gameRadioNames[13] = {
     "Playback FM", "K-Rose", "K-DST", "Bounce FM", "SF-UR", 
@@ -50,20 +37,20 @@ void MusicPlayerSA::Initialise() {
 
     ReadConfig();
     currentStation = stationCount + SA_RADIO_STATION_COUNT;
+    InputHandler::ResetKeyState();
 }
 
 void MusicPlayerSA::Update() {
+    WalkmanState::ProcessInput();
+
     bool walkmanActive = (currentStation < stationCount);
     
     if (walkmanActive) {
-        // Sync info for DrawPlayer
-        curTrackCount = mp3Stations[currentStation].trackCount;
-        curTrackIndex = mp3Stations[currentStation].currentTrack;
 
         // Silence native radio (CAERadioTrackManager::Service)
-        if (patch::GetUChar(0x4EB9A0) != 0xC3) {
-            patch::SetUChar(0x4EB9A0, 0xC3); // ret
-        }
+        //if (patch::GetUChar(0x4EB9A0) != 0xC3) {
+        //    patch::SetUChar(0x4EB9A0, 0xC3); // ret
+        //}
 
         if (!walkmanStream) {
             Mp3File* file = GetMp3Track(mp3Stations[currentStation].currentTrack);
@@ -76,7 +63,7 @@ void MusicPlayerSA::Update() {
             }
         } else {
             // Handle pausing
-            if (*gameUserPause) {
+            if (CTimer::m_UserPause) {
                 BASS_ChannelPause(walkmanStream);
             } else {
                 BASS_ChannelPlay(walkmanStream, FALSE);
@@ -91,9 +78,9 @@ void MusicPlayerSA::Update() {
         }
     } else {
         // Restore native radio
-        if (patch::GetUChar(0x4EB9A0) == 0xC3) {
-            patch::SetUChar(0x4EB9A0, 0x55); // push ebp
-        }
+        //if (patch::GetUChar(0x4EB9A0) == 0xC3) {
+        //    patch::SetUChar(0x4EB9A0, 0x55); // push ebp
+       // }
 
         if (walkmanStream) {
             BASS_StreamFree(walkmanStream);
@@ -119,25 +106,52 @@ void MusicPlayerSA::NextTrack() {
     }
 }
 
-Mp3File* MusicPlayerSA::GetMp3Track(int trackIndex) {
-    if (currentStation >= stationCount) return nullptr;
-    Mp3File* temp = mp3Stations[currentStation].mp3Start;
-    int i = 0;
-    while (i < trackIndex && temp) {
-        temp = (Mp3File*)temp->nextFile;
-        i++;
+void MusicPlayerSA::StopStreamAndSavePosition() {
+    if (walkmanStream) {
+        QWORD pos = BASS_ChannelGetPosition(walkmanStream, BASS_POS_BYTE);
+        double posSec = BASS_ChannelBytes2Seconds(walkmanStream, pos);
+        if (currentStation < stationCount) {
+            mp3Stations[currentStation].lastPositionMs = (unsigned int)(posSec * 1000.0);
+        }
+        BASS_StreamFree(walkmanStream);
+        walkmanStream = 0;
     }
-    return temp;
+}
+
+void MusicPlayerSA::ChangeMp3Station(int stationIndex) {
+    if (stationIndex < stationCount) {
+        StopStreamAndSavePosition();
+
+        currentStation = stationIndex;
+        listCurrentItem = mp3Stations[stationIndex].currentTrack;
+
+        if (mp3Stations[stationIndex].fade > 0) {
+            fade = mp3Stations[stationIndex].fade;
+        }
+    }
+}
+
+void MusicPlayerSA::CycleStation(int dir) {
+    int totalStations = stationCount + SA_RADIO_STATION_COUNT + 1; // +1 for OFF
+    int nextStation = currentStation + dir;
+
+    if (nextStation < 0) nextStation = totalStations - 1;
+    if (nextStation >= totalStations) nextStation = 0;
+
+    if (nextStation < stationCount) {
+        ChangeMp3Station(nextStation);
+    } else {
+        StopStreamAndSavePosition();
+
+        currentStation = nextStation;
+        fade = 200;
+    }
 }
 
 void MusicPlayerSA::LoadPlaylists() {
     for (int i = 0; i < stationCount; i++) {
-        InjectPlaylist(i);
+        MP3Injection::InjectPlaylist(i);
     }
-}
-
-void MusicPlayerSA::InjectPlaylist(int stationIndex) {
-    // Basic implementation for now
 }
 
 void MusicPlayerSA::DeletePlaylists() {
@@ -147,17 +161,5 @@ void MusicPlayerSA::DeletePlaylists() {
 
 void MusicPlayerSA::ReadConfig() {
     // config.Read() equivalent
-}
-
-void MusicPlayerSA::HandleKeyPress(int key) {
-    // Key handling logic
-}
-
-bool MusicPlayerSA::GetChar(int32_t c) {
-    return CPad::GetPad(0)->NewKeyState.standardKeys[c];
-}
-
-bool MusicPlayerSA::GetCharJustDown(int32_t c) {
-    return !!(CPad::GetPad(0)->NewKeyState.standardKeys[c] && !CPad::GetPad(0)->OldKeyState.standardKeys[c]);
 }
 #endif

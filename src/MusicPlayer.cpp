@@ -1,5 +1,6 @@
 #ifndef GTASA
 #include "../includes/MusicPlayer.h"
+#include "../includes/MP3Injection.h"
 #include "../includes/SomeMacros.h"
 #include <CFont.h>
 #include <CHud.h>
@@ -16,17 +17,6 @@
 #endif
 
 using namespace plugin;
-
-Mp3Station MusicPlayer::mp3Stations[10];
-int MusicPlayer::currentStation = 0;
-int MusicPlayer::stationCount = 0;
-int MusicPlayer::skipping = 0;
-int MusicPlayer::fade = 0;
-
-bool MusicPlayer::listActive = false;
-int MusicPlayer::listCurrentItem = 0;
-float MusicPlayer::listAlpha = 255.0f;
-float MusicPlayer::listFade = 0.0f;
 
 p_AIL_close_stream MusicPlayer::closeStream = nullptr;
 p_AIL_stream_ms_position MusicPlayer::streamMsPosition = nullptr;
@@ -46,7 +36,7 @@ unsigned int* gameCurrentStream = (unsigned int*)0x978668;   // int gAudioStream
 unsigned int* gameHDigDriver = (unsigned int*)0x978550;   // int gHDigDriver in asm, _DIG_driver (Miles)
 unsigned char* gameDisableKeyboard2 = (unsigned char*)0xA10AE4;  // CPad::m_bMapPadOneToPadTwo
 unsigned char* gameUserPause = (unsigned char*)0xA10B36;  // CTimer::m_UserPause
-#elif defined(GTA3)
+#else
 #define GAME_STATION_COUNT 9
 #define RADIO_OFF_VAL 11
 #define NO_TRACK 197
@@ -58,25 +48,16 @@ unsigned int* gameCurrentStream = (unsigned int*)0x709C50;   // mp3stream in re3
 unsigned int* gameHDigDriver = (unsigned int*)0x8F1A24;   // hDigDriver in asm
 unsigned char* gameDisableKeyboard2 = (unsigned char*)0x95CD48;  // CPad::m_bMapPadOneToPadTwo
 unsigned char* gameUserPause = (unsigned char*)0x95CD7C;  // CTimer::m_UserPause
-#else
-// Define or handle other versions here
 #endif
 p_AIL_start_stream MusicPlayer::startStream = nullptr;
 p_AIL_set_stream_volume MusicPlayer::setStreamVolume = nullptr;
 p_AIL_stream_status MusicPlayer::streamStatus = nullptr;
 p_AIL_service_stream MusicPlayer::serviceStream = nullptr;
-unsigned int MusicPlayer::walkmanStream = 0;
-int MusicPlayer::walkmanVolume = 64; // Default to half volume (max 127)
 unsigned int MusicPlayer::adfLastPosition[12] = { 0 };
+unsigned int MusicPlayer::walkmanStream = 0;
 unsigned int MusicPlayer::adfSwitchTime[12] = { 0 };
 
-static bool oldKeyState[256];
 
-bool IsKeyJustPressed(unsigned int key) {
-    bool current = KeyPressed(key);
-    bool pressed = current && !oldKeyState[key];
-    return pressed;
-}
 
 void MusicPlayer::Initialise() {
     // Initialize MSS pointers
@@ -90,7 +71,7 @@ void MusicPlayer::Initialise() {
     setStreamVolume = patch::Get<p_AIL_set_stream_volume>(0x6F25B0);
     streamStatus = patch::Get<p_AIL_stream_status>(0x6F25AC);
     serviceStream = patch::Get<p_AIL_service_stream>(0x6F25D4);
-#elif defined(GTA3)
+#else
     closeStream = patch::Get<p_AIL_close_stream>(0x61D5D0);
     streamMsPosition = patch::Get<p_AIL_stream_ms_position>(0x61D5CC);
     setStreamMsPosition = patch::Get<p_AIL_set_stream_ms_position>(0x61D668);
@@ -100,7 +81,6 @@ void MusicPlayer::Initialise() {
     setStreamVolume = patch::Get<p_AIL_set_stream_volume>(0x61D66C);
     streamStatus = patch::Get<p_AIL_stream_status>(0x61D674);
     serviceStream = patch::Get<p_AIL_service_stream>(0x61D660);
-#else
 #endif
     ReadConfig();
     currentStation = stationCount + 9; // Initialize to OFF
@@ -115,7 +95,7 @@ void MusicPlayer::Initialise() {
         patch::SetChar(0x5D80E0, 0xB8); // mov eax, 1
         patch::SetInt(0x5D80E1, 1);
         patch::SetChar(0x5D80E5, 0xC3); // ret
-#elif defined(GTA3)
+#else
         // Hook into mp3 processing
         patch::ReplaceFunctionCall(0x566C7D, LoadPlaylists);
         patch::ReplaceFunctionCall(0x566E2D, DeletePlaylists);
@@ -125,7 +105,6 @@ void MusicPlayer::Initialise() {
         patch::SetChar(0x57A9C0, 0xB8); // mov eax, 1
         patch::SetInt(0x57A9C1, 1);
         patch::SetChar(0x57A9C5, 0xC3); // ret
-#else
 #endif
     }
 
@@ -134,35 +113,11 @@ void MusicPlayer::Initialise() {
     // Seed ADF broadcast clocks so stations "play" from game start
     unsigned int startTime = GetTickCount();
     for (int i = 0; i < GAME_STATION_COUNT; i++) adfSwitchTime[i] = startTime;
-
-    for (int i = 0; i < 256; i++) oldKeyState[i] = false;
+    InputHandler::ResetKeyState();
 }
 
 void MusicPlayer::Update() {
-
-    if (IsKeyJustPressed(config.ToggleList)) HandleKeyPress(config.ToggleList);
-
-    if (listActive) {
-        if (IsKeyJustPressed(config.ListChoose) || IsKeyJustPressed(VK_RETURN)) HandleKeyPress(VK_RETURN);
-        if (IsKeyJustPressed(config.ListScrollUp) || IsKeyJustPressed(VK_UP)) HandleKeyPress(VK_UP);
-        if (IsKeyJustPressed(config.ListScrollDown) || IsKeyJustPressed(VK_DOWN)) HandleKeyPress(VK_DOWN);
-        if (IsKeyJustPressed(VK_LEFT)) HandleKeyPress(VK_LEFT);
-        if (IsKeyJustPressed(VK_RIGHT)) HandleKeyPress(VK_RIGHT);
-    }
-    else {
-        for (int i = 0x31; i <= 0x39; i++) {
-            if (IsKeyJustPressed(i)) HandleKeyPress(i);
-        }
-
-        if (IsKeyJustPressed(config.PrevTrack)) HandleKeyPress(config.PrevTrack);
-        if (IsKeyJustPressed(config.NextTrack)) HandleKeyPress(config.NextTrack);
-        if (IsKeyJustPressed(config.ToggleShuffle)) HandleKeyPress(config.ToggleShuffle);
-        if (IsKeyJustPressed(config.VolumeUp)) HandleKeyPress(config.VolumeUp);
-        if (IsKeyJustPressed(config.VolumeDown)) HandleKeyPress(config.VolumeDown);
-    }
-
-    // Update old key state
-    for (int i = 0; i < 256; i++) oldKeyState[i] = KeyPressed(i);
+    WalkmanState::ProcessInput();
 
     // Pause handling
     if (*gameUserPause == 1) {
@@ -227,13 +182,12 @@ void MusicPlayer::Update() {
                     "FEVER.ADF", "VROCK.ADF", "VCPR.ADF",
                     "ESPANT.ADF", "EMOTION.ADF", "WAVE.ADF"
                 };
-#elif defined(GTA3)
+#else
                 static const char* nativePaths[] = {
                     "CHAT.wav", "RISE.wav", "MSX.wav",
                     "HEAD.wav", "GAME.wav", "CLASS.wav",
                     "LIPS.wav", "KJAH.wav", "FLASH.wav"
                 };
-#else
 #endif
                 if (gameRadioID >= 0 && gameRadioID < 9) {
                     static char safeAdfPath[260];
@@ -296,97 +250,13 @@ void MusicPlayer::Update() {
     }
 }
 
-void MusicPlayer::HandleKeyPress(int key) {
-    // if (*gameIsMp3Active == 0) return;
-
-    skipping = 0;
-
-    if (key == config.ToggleList) {
-        listActive = !listActive;
-        *gameDisableKeyboard2 = listActive;
-
-        if (listActive) {
-            listCurrentItem = *gameCurrentTrack;
-            listAlpha = 255.0f;
-            listFade = 0.0f;
-        }
-    }
-    else if (listActive && (key == config.ListChoose || key == VK_RETURN)) {
-        if (currentStation < stationCount) {
-            if (*gameCurrentTrack != listCurrentItem) {
-                *gameCurrentTrack = listCurrentItem;
-                if (walkmanStream) {
-                    closeStream(walkmanStream);
-                    walkmanStream = 0;
-                }
-            }
-        }
-        listFade = -20.0f;
-    }
-    else if (listActive && (key == config.ListScrollUp || key == VK_UP)) {
-        if (listCurrentItem > 0) listCurrentItem -= 1;
-    }
-    else if (listActive && (key == config.ListScrollDown || key == VK_DOWN)) {
-        if (listCurrentItem < (int)*gameTrackCount - 1) listCurrentItem += 1;
-    }
-    else if (listActive && key == VK_LEFT) {
-        CycleStation(-1);
-    }
-    else if (listActive && key == VK_RIGHT) {
-        CycleStation(1);
-    }
-    else if (key >= 0x31 && key <= 0x39) {
-        ChangeMp3Station(key - 0x31);
-    }
-    else if (key == config.PrevTrack) {
-        if (currentStation < stationCount) {
-            if (walkmanStream) {
-                closeStream(walkmanStream);
-                walkmanStream = 0;
-            }
-            skipping = -1;
-            NextTrack();
-        }
-        else {
-            CycleStation(-1);
-        }
-    }
-    else if (key == config.NextTrack) {
-        if (currentStation < stationCount) {
-            if (walkmanStream) {
-                closeStream(walkmanStream);
-                walkmanStream = 0;
-            }
-            skipping = +1;
-            NextTrack();
-        }
-        else {
-            CycleStation(1);
-        }
-    }
-    else if (key == config.ToggleShuffle) {
-        if (currentStation < stationCount)
-            mp3Stations[currentStation].shuffle = !mp3Stations[currentStation].shuffle;
-    }
-    else if (key == config.VolumeUp) {
-        if (walkmanVolume < 127) walkmanVolume += 2;
-        if (walkmanVolume > 127) walkmanVolume = 127;
-        if (walkmanStream) setStreamVolume(walkmanStream, walkmanVolume);
-    }
-    else if (key == config.VolumeDown) {
-        if (walkmanVolume > 0) walkmanVolume -= 2;
-        if (walkmanVolume < 0) walkmanVolume = 0;
-        if (walkmanStream) setStreamVolume(walkmanStream, walkmanVolume);
-    }
-}
-
 void MusicPlayer::LoadPlaylists() {
     *gameMp3Files = 0;
     *gameTrackCount = 0;
     *gameCurrentTrack = 0;
 
     for (int i = 0; i < stationCount; i++) {
-        InjectPlaylist(i);
+        MP3Injection::InjectPlaylist(i);
     }
 
     *gameMp3Files = (unsigned int)mp3Stations[0].mp3Start;
@@ -547,133 +417,5 @@ void MusicPlayer::CycleStation(int dir) {
         currentStation = nextStation;
         fade = 200;
     }
-}
-
-void MusicPlayer::InjectPlaylist(int stationIndex) {
-    std::string folderPath = mp3Stations[stationIndex].playlist;
-    Mp3File* previousFile = nullptr;
-
-    std::vector<std::string> mp3Files = plugin::GetAllFilesInFolder(folderPath, ".mp3", true);
-
-    for (const std::string& filePath : mp3Files) {
-        unsigned int streamHandle;
-        Mp3File* file = (Mp3File*)malloc(sizeof(Mp3File));
-        strcpy(file->filename, filePath.c_str());
-        file->nextFile = 0;
-        file->unknown1 = 0;
-        file->unknown2 = 0;
-        file->prevFile = 0;
-        file->album = nullptr;
-        file->artist = nullptr;
-        file->title = nullptr;
-
-        streamHandle = openStream(*gameHDigDriver, file->filename, 0);
-        if (streamHandle) {
-            UpdateMp3InfoWithID3v2Tags(file);
-            if (file->title == nullptr) {
-                UpdateMp3InfoWithID3v1Tags(file);
-                if (file->title == nullptr) {
-                    char* fileNameOnly = strrchr(file->filename, '\\');
-                    if (fileNameOnly) fileNameOnly++; else fileNameOnly = file->filename;
-                    file->title = _strdup(fileNameOnly);
-                }
-            }
-
-            streamMsPosition(streamHandle, &file->trackLength, 0);
-            closeStream(streamHandle);
-
-            if (mp3Stations[stationIndex].mp3Start == nullptr) {
-                mp3Stations[stationIndex].mp3Start = file;
-            }
-            mp3Stations[stationIndex].trackCount += 1;
-
-            if (previousFile) {
-                file->prevFile = (unsigned int)previousFile;
-                previousFile->nextFile = (unsigned int)file;
-            }
-            previousFile = file;
-        }
-        else {
-            free(file);
-        }
-    }
-}
-
-void MusicPlayer::UpdateMp3InfoWithID3v1Tags(Mp3File* file) {
-    FILE* mp3 = fopen(file->filename, "rb");
-    if (mp3) {
-        ID3v1 id3tag;
-        fseek(mp3, -128, SEEK_END);
-        fread(&id3tag, 128, 1, mp3);
-
-        if (id3tag.tag[0] == 'T' && id3tag.tag[1] == 'A' && id3tag.tag[2] == 'G') {
-            file->album = (char*)malloc(31);
-            memcpy(file->album, id3tag.album, 30);
-            file->album[30] = 0;
-
-            file->artist = (char*)malloc(31);
-            memcpy(file->artist, id3tag.artist, 30);
-            file->artist[30] = 0;
-
-            file->title = (char*)malloc(31);
-            memcpy(file->title, id3tag.title, 30);
-            file->title[30] = 0;
-        }
-        fclose(mp3);
-    }
-}
-
-void MusicPlayer::UpdateMp3InfoWithID3v2Tags(Mp3File* file) {
-    FILE* f = fopen(file->filename, "rb");
-    if (f) {
-        unsigned char header[10];
-        if (fread(header, 10, 1, f) == 1 && header[0] == 'I' && header[1] == 'D' && header[2] == '3') {
-            int tagSize = (int)((header[6] & 0x7F) << 21) | (int)((header[7] & 0x7F) << 14) | (int)((header[8] & 0x7F) << 7) | (int)(header[9] & 0x7F);
-            unsigned char* buffer = (unsigned char*)malloc(tagSize);
-            fread(buffer, tagSize, 1, f);
-
-            unsigned char* tagPtr = buffer;
-            while (tagPtr < buffer + tagSize) {
-                char frameID[5] = { 0 };
-                memcpy(frameID, tagPtr, 4);
-                unsigned int frameSize = (unsigned int)(tagPtr[4] << 24) | (tagPtr[5] << 16) | (tagPtr[6] << 8) | tagPtr[7];
-                if (frameSize == 0 || frameSize > (unsigned int)(buffer + tagSize - tagPtr)) break;
-
-                if (frameID[0] == 'T') {
-                    unsigned char encoding = tagPtr[10];
-                    char tempStr[256] = { 0 };
-                    if (encoding == 0) { // ISO-8859-1
-                        size_t len = frameSize - 1;
-                        if (len > 255) len = 255;
-                        memcpy(tempStr, tagPtr + 11, len);
-                    }
-                    else if (encoding == 1) { // UTF-16
-                        wchar_t wtemp[256] = { 0 };
-                        size_t len = (frameSize - 1) / 2;
-                        if (len > 255) len = 255;
-                        memcpy(wtemp, tagPtr + 13, len * 2); // Skip BOM
-                        WideCharToMultiByte(CP_ACP, 0, wtemp, -1, tempStr, 256, nullptr, nullptr);
-                    }
-
-                    if (!strcmp(frameID, "TALB")) file->album = _strdup(tempStr);
-                    else if (!strcmp(frameID, "TPE1")) file->artist = _strdup(tempStr);
-                    else if (!strcmp(frameID, "TIT2")) file->title = _strdup(tempStr);
-                }
-                tagPtr += 10 + frameSize;
-            }
-            free(buffer);
-        }
-        fclose(f);
-    }
-}
-
-Mp3File* MusicPlayer::GetMp3Track(int trackIndex) {
-    Mp3File* temp = mp3Stations[currentStation].mp3Start;
-    int i = 0;
-    while (i < trackIndex && temp) {
-        temp = (Mp3File*)temp->nextFile;
-        i++;
-    }
-    return temp;
 }
 #endif

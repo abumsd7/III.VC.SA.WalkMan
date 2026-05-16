@@ -1,5 +1,5 @@
 #include "../includes/DrawPlayer.h"
-#include "../includes/MusicPlayer.h"
+#include "../includes/WalkmanState.h"
 #include "../includes/SomeMacros.h"
 #include <CFont.h>
 #include <CHud.h>
@@ -8,10 +8,6 @@
 #include <CFileLoader.h>
 #include <cmath>
 
-extern const char* gameRadioNames[9];
-extern unsigned char* gameDisableKeyboard2;
-extern unsigned int* gameTrackCount;
-extern unsigned int* gameCurrentTrack;
 
 RwTexDictionary* DrawPlayer::walkmanTxd = nullptr;
 CSprite2d DrawPlayer::walkmanSprite;
@@ -37,8 +33,8 @@ void DrawPlayer::Draw() {
     scrollTimer++;
 
     // Slide animation
-    bool radioOff = (MusicPlayer::currentStation == MusicPlayer::stationCount + 9);
-    bool shouldBeVisible = !radioOff || MusicPlayer::listActive;
+    bool radioOff = WalkmanState::IsRadioOff();
+    bool shouldBeVisible = !radioOff || WalkmanState::listActive;
     float slideTarget = shouldBeVisible ? 0.0f : -(config.walkmanPos.right + 50.0f);
     slideOffset += (slideTarget - slideOffset) * 0.08f;
     if (fabs(slideTarget - slideOffset) < 0.5f) slideOffset = slideTarget;
@@ -48,28 +44,27 @@ void DrawPlayer::Draw() {
 
     float screenSlideX = SCREEN_SCALE_X(slideOffset);
 
-    if (MusicPlayer::listActive) {
-        if (MusicPlayer::listAlpha > 50.0f) {
-            CFont::SetAlphaFade(MusicPlayer::listAlpha);
+    if (WalkmanState::listActive) {
+        if (WalkmanState::listAlpha > 50.0f) {
+            CFont::SetAlphaFade(WalkmanState::listAlpha);
             RenderList();
-            MusicPlayer::listAlpha += MusicPlayer::listFade;
+            WalkmanState::listAlpha += WalkmanState::listFade;
         }
         else {
-            MusicPlayer::listActive = false;
-            *gameDisableKeyboard2 = MusicPlayer::listActive;
+            WalkmanState::SetListActive(false);
         }
     }
 
     CFont::SetAlphaFade(255.0f);
 
-    if (config.FadeOutMp3Station && !radioOff && !MusicPlayer::listActive) {
-        if (MusicPlayer::fade == 0) return;
-        MusicPlayer::fade -= 1;
-        CFont::SetAlphaFade(MusicPlayer::fade * 5.0f);
+    if (config.FadeOutMp3Station && !radioOff && !WalkmanState::listActive) {
+        if (WalkmanState::fade == 0) return;
+        WalkmanState::fade -= 1;
+        CFont::SetAlphaFade(WalkmanState::fade * 5.0f);
     }
     else {
-        if (config.FadeOutMp3Station && MusicPlayer::listActive) {
-            MusicPlayer::fade = 51; // reset fade when list opens
+        if (config.FadeOutMp3Station && WalkmanState::listActive) {
+            WalkmanState::fade = 51; // reset fade when list opens
         }
         CFont::SetAlphaFade(255.0f);
     }
@@ -79,12 +74,19 @@ void DrawPlayer::Draw() {
 }
 
 void DrawPlayer::RenderList() {
-    if (MusicPlayer::currentStation >= MusicPlayer::stationCount) return;
-
+    if (WalkmanState::currentStation >= WalkmanState::stationCount) return;
+#ifndef GTASA
     CFont::SetJustifyOff();
     CFont::SetBackgroundOff();
-    CFont::SetBackgroundColor(CRGBA(0, 0, 0, 187));
+    CFont::SetCentreOff();
     CFont::SetPropOn();
+#else
+    CFont::SetJustify(false);
+    CFont::SetBackground(false, false);
+    CFont::SetOrientation(ALIGN_LEFT);
+    CFont::SetProportional(true);
+#endif
+    CFont::SetBackgroundColor(CRGBA(0, 0, 0, 187));
     CFont::SetDropShadowPosition(1);
     CFont::SetDropColor(CRGBA(0, 0, 0, 255));
 #ifdef GTAVC
@@ -92,26 +94,26 @@ void DrawPlayer::RenderList() {
 #elif defined(GTA3)
     CFont::SetFontStyle(FONT_BANK);
 #endif
-    CFont::SetCentreOff();
     CFont::SetScale(SCREEN_SCALE_X(config.TextScale.x), SCREEN_SCALE_Y(config.TextScale.y));
-    if (MusicPlayer::currentStation >= MusicPlayer::stationCount) {
+    if (WalkmanState::currentStation >= WalkmanState::stationCount) {
         return;
     }
 
     // Sliding window logic
-    if (MusicPlayer::listCurrentItem < listStartIndex) {
-        listStartIndex = MusicPlayer::listCurrentItem;
+    if (WalkmanState::listCurrentItem < listStartIndex) {
+        listStartIndex = WalkmanState::listCurrentItem;
     }
-    else if (MusicPlayer::listCurrentItem >= listStartIndex + 5) {
-        listStartIndex = MusicPlayer::listCurrentItem - 4;
+    else if (WalkmanState::listCurrentItem >= listStartIndex + 5) {
+        listStartIndex = WalkmanState::listCurrentItem - 4;
     }
 
     float posY = config.ListStartY; // Start printing list from bottom
 
     // Count how many items to print
     int numItems = 0;
+    unsigned int trackCount = WalkmanState::GetTrackCount();
     for (int i = 0; i < 5; i++) {
-        if (listStartIndex + i >= (int)*gameTrackCount) break;
+        if (listStartIndex + i >= (int)trackCount) break;
         numItems++;
     }
 
@@ -120,10 +122,10 @@ void DrawPlayer::RenderList() {
     // Print list items backwards
     for (int i = numItems - 1; i >= 0; i--) {
         int trackIndex = listStartIndex + i;
-        Mp3File* temp = MusicPlayer::GetMp3Track(trackIndex);
+        Mp3File* temp = WalkmanState::GetMp3Track(trackIndex);
         if (!temp) continue;
 
-        CRGBA textCol = (trackIndex == MusicPlayer::listCurrentItem) ? CRGBA(247, 194, 97, 255) : CRGBA(255, 255, 255, 255);
+        CRGBA textCol = (trackIndex == WalkmanState::listCurrentItem) ? CRGBA(247, 194, 97, 255) : CRGBA(255, 255, 255, 255);
         CRGBA rectCol = CRGBA(0, 0, 0, 187);
 
         char buf[512];
@@ -140,14 +142,14 @@ void DrawPlayer::RenderList() {
 
     // Print track count at the top
     char countBuf[64];
-    sprintf(countBuf, "Track %i/%i", MusicPlayer::listCurrentItem + 1, *gameTrackCount);
+    sprintf(countBuf, "Track %i/%i", WalkmanState::listCurrentItem + 1, trackCount);
 
     CFont::SetScale(SCREEN_SCALE_X(config.TextScale.x), SCREEN_SCALE_Y(config.TextScale.y));
     TextWithBGRect(SCREEN_SCALE_X(config.ListStartX) + screenSlideX, SCREEN_SCALE_FROM_BOTTOM(posY), countBuf, CRGBA(0, 0, 0, 187), CRGBA(255, 255, 255, 255), config.ItemPaddingX, config.ItemPaddingY, config.ListItemHeight, config.ListMaxChars);
 }
 
 void DrawPlayer::DisplayMp3Station() {
-    float currentAlpha = (config.FadeOutMp3Station && MusicPlayer::currentStation < MusicPlayer::stationCount + 9) ? (MusicPlayer::fade * 5.0f) : 255.0f;
+    float currentAlpha = (config.FadeOutMp3Station && !WalkmanState::IsRadioOff()) ? (WalkmanState::fade * 5.0f) : 255.0f;
     if (currentAlpha > 255.0f) currentAlpha = 255.0f;
     unsigned char alphaByte = (unsigned char)currentAlpha;
     unsigned char rectAlphaByte = (unsigned char)(187 * (currentAlpha / 255.0f));
@@ -169,10 +171,18 @@ void DrawPlayer::DisplayMp3Station() {
     RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, (void*)rwFILTERLINEAR);
     walkmanSprite.Draw(walkmanBounds, CRGBA(255, 255, 255, alphaByte));
 
+#ifndef GTASA
     CFont::SetJustifyOff();
     CFont::SetBackgroundOff();
-    CFont::SetBackgroundColor(CRGBA(0, 0, 0, 187));
+    CFont::SetCentreOff();
     CFont::SetPropOn();
+#else
+    CFont::SetJustify(false);
+    CFont::SetBackground(false, false);
+    CFont::SetOrientation(ALIGN_LEFT);
+    CFont::SetProportional(true);
+#endif
+    CFont::SetBackgroundColor(CRGBA(0, 0, 0, 187));
     CFont::SetDropShadowPosition(1);
     CFont::SetDropColor(CRGBA(0, 0, 0, 255));
 #ifdef GTAVC
@@ -180,7 +190,6 @@ void DrawPlayer::DisplayMp3Station() {
 #elif defined(GTA3)
     CFont::SetFontStyle(FONT_BANK);
 #endif
-    CFont::SetCentreOff();
     CFont::SetScale(SCREEN_SCALE_X(config.StationTextScale.x), SCREEN_SCALE_Y(config.StationTextScale.y));
 
     float stationX = SCREEN_SCALE_X(config.StationStartX) + screenSlideX;
@@ -188,17 +197,18 @@ void DrawPlayer::DisplayMp3Station() {
     CRGBA textCol = CRGBA(247, 194, 97, alphaByte);
     CRGBA rectCol = CRGBA(0, 0, 0, rectAlphaByte);
 
-    bool radioOff = (MusicPlayer::currentStation == MusicPlayer::stationCount + 9);
+    bool radioOff = WalkmanState::IsRadioOff();
 
     if (radioOff) {
         // Radio OFF: just show station name
         TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), "Radio OFF", rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
     }
-    else if (MusicPlayer::currentStation < MusicPlayer::stationCount) {
+    else if (WalkmanState::currentStation < WalkmanState::stationCount) {
         // MP3 Logic
-        Mp3File* file = MusicPlayer::mp3Stations[MusicPlayer::currentStation].mp3Start;
+        Mp3File* file = WalkmanState::mp3Stations[WalkmanState::currentStation].mp3Start;
         int i = 0;
-        while (i < (int)*gameCurrentTrack && file) {
+        unsigned int curTrack = WalkmanState::GetCurrentTrackIndex();
+        while (i < (int)curTrack && file) {
             file = (Mp3File*)(file->nextFile);
             i++;
         }
@@ -230,33 +240,31 @@ void DrawPlayer::DisplayMp3Station() {
         posY += config.StationLineGap;
 
         // 4. Station Name (Top)
-        const char* stationName = MusicPlayer::mp3Stations[MusicPlayer::currentStation].name;
+        const char* stationName = WalkmanState::mp3Stations[WalkmanState::currentStation].name;
         TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), stationName, rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
     }
     else {
-        // ADF Logic
-        if (MusicPlayer::walkmanStream) {
-            unsigned int total_ms = 0, current_ms = 0;
-            MusicPlayer::streamMsPosition(MusicPlayer::walkmanStream, &total_ms, &current_ms);
+        // Native Radio Logic
+        unsigned int total_ms = 0, current_ms = 0;
+        WalkmanState::GetTrackPlaybackInfo(current_ms, total_ms);
 
-            if (total_ms > 0) {
-                int totalMin = (total_ms / 1000) / 60;
-                int totalSec = (total_ms / 1000) % 60;
-                int currentMin = (current_ms / 1000) / 60;
-                int currentSec = (current_ms / 1000) % 60;
+        if (total_ms > 0) {
+            int totalMin = (total_ms / 1000) / 60;
+            int totalSec = (total_ms / 1000) % 60;
+            int currentMin = (current_ms / 1000) / 60;
+            int currentSec = (current_ms / 1000) % 60;
 
-                char durationBuf[64];
-                sprintf(durationBuf, "%02d:%02d / %02d:%02d", currentMin, currentSec, totalMin, totalSec);
-                TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), durationBuf, rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
-            }
-            else {
-                TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), "Info unavailable", rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
-            }
-            posY += config.StationLineGap;
+            char durationBuf[64];
+            sprintf(durationBuf, "%02d:%02d / %02d:%02d", currentMin, currentSec, totalMin, totalSec);
+            TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), durationBuf, rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
         }
+        else {
+            TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), "Info unavailable", rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
+        }
+        posY += config.StationLineGap;
 
-        // ADF Station Name (Top)
-        const char* stationName = gameRadioNames[MusicPlayer::currentStation - MusicPlayer::stationCount];
+        // Native Station Name (Top)
+        const char* stationName = WalkmanState::GetActiveStationName();
         TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), stationName, rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
     }
 
@@ -268,10 +276,10 @@ void DrawPlayer::DisplayMp3Station() {
     if (radioOff) {
         helperStr = "Press Left or Right to switch channels.";
     }
-    else if (MusicPlayer::currentStation >= MusicPlayer::stationCount) {
+    else if (WalkmanState::currentStation >= WalkmanState::stationCount) {
         helperStr = "Playing in-game radio stations...";
     }
-    else if (MusicPlayer::listActive) {
+    else if (WalkmanState::listActive) {
         helperStr = "Press RET to play song.";
     }
     else {
@@ -360,7 +368,11 @@ void DrawPlayer::TextWithBGRect(float x, float y, const char* str, CRGBA rectCol
     CSprite2d::DrawRect(CRect(rectLeft, y - scaledPadY, rectRight, rectBottom), rectCol);
 
     CFont::SetColor(textCol);
+#ifndef GTASA
     if (rightAlign) CFont::SetRightJustifyOn(); else CFont::SetRightJustifyOff();
-
+#else
+	CFont::SetOrientation(rightAlign ? ALIGN_RIGHT : ALIGN_LEFT);
+	CFont::SetJustify(rightAlign);
+#endif
     CFont::PrintString(x, y, (char*)displayStr);
 }

@@ -1,0 +1,146 @@
+#include "../includes/MP3Injection.h"
+#include <filesystem>
+#include <vector>
+
+#ifdef GTASA
+#include <bass.h>
+#else
+#include "../includes/MusicPlayer.h"
+extern unsigned int* gameHDigDriver;
+#endif
+
+void MP3Injection::InjectPlaylist(int stationIndex) {
+    std::string folderPath = WalkmanState::mp3Stations[stationIndex].playlist;
+    Mp3File* previousFile = nullptr;
+
+    std::vector<std::string> mp3Files = plugin::GetAllFilesInFolder(folderPath, ".mp3", true);
+
+    for (const std::string& filePath : mp3Files) {
+        Mp3File* file = (Mp3File*)malloc(sizeof(Mp3File));
+        strcpy(file->filename, filePath.c_str());
+        file->nextFile = 0;
+        file->unknown1 = 0;
+        file->unknown2 = 0;
+        file->prevFile = 0;
+        file->album = nullptr;
+        file->artist = nullptr;
+        file->title = nullptr;
+
+#ifdef GTASA
+        HSTREAM streamHandle = BASS_StreamCreateFile(FALSE, file->filename, 0, 0, BASS_STREAM_DECODE);
+        if (streamHandle) {
+            UpdateMp3InfoWithID3v2Tags(file);
+            if (file->title == nullptr) {
+                UpdateMp3InfoWithID3v1Tags(file);
+                if (file->title == nullptr) {
+                    char* fileNameOnly = strrchr(file->filename, '\\');
+                    if (fileNameOnly) fileNameOnly++; else fileNameOnly = file->filename;
+                    file->title = _strdup(fileNameOnly);
+                }
+            }
+
+            QWORD len = BASS_ChannelGetLength(streamHandle, BASS_POS_BYTE);
+            double lenSec = BASS_ChannelBytes2Seconds(streamHandle, len);
+            file->trackLength = (unsigned int)(lenSec * 1000.0);
+            BASS_StreamFree(streamHandle);
+#else
+        unsigned int streamHandle = MusicPlayer::openStream(*gameHDigDriver, file->filename, 0);
+        if (streamHandle) {
+            UpdateMp3InfoWithID3v2Tags(file);
+            if (file->title == nullptr) {
+                UpdateMp3InfoWithID3v1Tags(file);
+                if (file->title == nullptr) {
+                    char* fileNameOnly = strrchr(file->filename, '\\');
+                    if (fileNameOnly) fileNameOnly++; else fileNameOnly = file->filename;
+                    file->title = _strdup(fileNameOnly);
+                }
+            }
+
+            MusicPlayer::streamMsPosition(streamHandle, &file->trackLength, 0);
+            MusicPlayer::closeStream(streamHandle);
+#endif
+
+            if (WalkmanState::mp3Stations[stationIndex].mp3Start == nullptr) {
+                WalkmanState::mp3Stations[stationIndex].mp3Start = file;
+            }
+            WalkmanState::mp3Stations[stationIndex].trackCount += 1;
+
+            if (previousFile) {
+                file->prevFile = (unsigned int)previousFile;
+                previousFile->nextFile = (unsigned int)file;
+            }
+            previousFile = file;
+        }
+        else {
+            free(file);
+        }
+    }
+}
+
+void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File* file) {
+    FILE* mp3 = fopen(file->filename, "rb");
+    if (mp3) {
+        ID3v1 id3tag;
+        fseek(mp3, -128, SEEK_END);
+        fread(&id3tag, 128, 1, mp3);
+
+        if (id3tag.tag[0] == 'T' && id3tag.tag[1] == 'A' && id3tag.tag[2] == 'G') {
+            file->album = (char*)malloc(31);
+            memcpy(file->album, id3tag.album, 30);
+            file->album[30] = 0;
+
+            file->artist = (char*)malloc(31);
+            memcpy(file->artist, id3tag.artist, 30);
+            file->artist[30] = 0;
+
+            file->title = (char*)malloc(31);
+            memcpy(file->title, id3tag.title, 30);
+            file->title[30] = 0;
+        }
+        fclose(mp3);
+    }
+}
+
+void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File* file) {
+    FILE* f = fopen(file->filename, "rb");
+    if (f) {
+        unsigned char header[10];
+        if (fread(header, 10, 1, f) == 1 && header[0] == 'I' && header[1] == 'D' && header[2] == '3') {
+            int tagSize = (int)((header[6] & 0x7F) << 21) | (int)((header[7] & 0x7F) << 14) | (int)((header[8] & 0x7F) << 7) | (int)(header[9] & 0x7F);
+            unsigned char* buffer = (unsigned char*)malloc(tagSize);
+            fread(buffer, tagSize, 1, f);
+
+            unsigned char* tagPtr = buffer;
+            while (tagPtr < buffer + tagSize) {
+                char frameID[5] = { 0 };
+                memcpy(frameID, tagPtr, 4);
+                unsigned int frameSize = (unsigned int)(tagPtr[4] << 24) | (tagPtr[5] << 16) | (tagPtr[6] << 8) | tagPtr[7];
+                if (frameSize == 0 || frameSize > (unsigned int)(buffer + tagSize - tagPtr)) break;
+
+                if (frameID[0] == 'T') {
+                    unsigned char encoding = tagPtr[10];
+                    char tempStr[256] = { 0 };
+                    if (encoding == 0) { // ISO-8859-1
+                        size_t len = frameSize - 1;
+                        if (len > 255) len = 255;
+                        memcpy(tempStr, tagPtr + 11, len);
+                    }
+                    else if (encoding == 1) { // UTF-16
+                        wchar_t wtemp[256] = { 0 };
+                        size_t len = (frameSize - 1) / 2;
+                        if (len > 255) len = 255;
+                        memcpy(wtemp, tagPtr + 13, len * 2); // Skip BOM
+                        WideCharToMultiByte(CP_ACP, 0, wtemp, -1, tempStr, 256, nullptr, nullptr);
+                    }
+
+                    if (!strcmp(frameID, "TALB")) file->album = _strdup(tempStr);
+                    else if (!strcmp(frameID, "TPE1")) file->artist = _strdup(tempStr);
+                    else if (!strcmp(frameID, "TIT2")) file->title = _strdup(tempStr);
+                }
+                tagPtr += 10 + frameSize;
+            }
+            free(buffer);
+        }
+        fclose(f);
+    }
+}
