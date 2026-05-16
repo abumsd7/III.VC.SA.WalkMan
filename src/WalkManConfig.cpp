@@ -1,3 +1,4 @@
+#include "../includes/WalkManState.h"
 #include "../includes/WalkManConfig.h"
 #include <extensions/Config.h>
 #include <extensions/Paths.h>
@@ -47,8 +48,8 @@ void WalkManConfig::SetDefaults() {
 void WalkManConfig::Read() {
     SetDefaults();
     
-    std::string path = GAME_PATH("\\scripts\\walkman.ini");
-    std::ifstream f(path);
+    string path = GAME_PATH("\\scripts\\walkman.ini");
+    ifstream f(path);
     if (!f.good()) {
         f.close();
         Write();
@@ -99,8 +100,8 @@ void WalkManConfig::Read() {
 void WalkManConfig::Write() {
     SetDefaults();
 
-    std::string path = GAME_PATH("\\scripts\\walkman.ini");
-    std::ofstream out(path);
+    string path = GAME_PATH("\\scripts\\walkman.ini");
+    ofstream out(path);
     if (!out.is_open()) return;
 
     out << "; WalkMan Plugin Configuration\n\n";

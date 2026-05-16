@@ -16,6 +16,7 @@ struct Main
     {
         // Initialise MusicPlayer once the game is ready
         Events::initRwEvent += [] { 
+            WalkmanState::Initialise();
             DrawPlayer::Initialise(); 
 #ifdef GTASA
             MusicPlayerSA::Initialise();

@@ -1,8 +1,12 @@
 #include "../includes/WalkmanState.h"
 #include "../includes/WalkManConfig.h"
+#include "../includes/SomeMacros.h"
+#include <filesystem>
+#include <extensions/Paths.h>
 
 #ifdef GTASA
 #include "../includes/MusicPlayerSA.h"
+#include <CPad.h>
 #include <bass.h>
 #else
 #include "../includes/MusicPlayer.h"
@@ -29,6 +33,44 @@ extern const char* gameRadioNames[];
 extern const char* gameRadioNames[13];
 #endif
 
+void WalkmanState::Initialise() {
+    for (int i = 0; i < 10; i++) {
+        mp3Stations[i].name = nullptr;
+        mp3Stations[i].playlist = nullptr;
+        mp3Stations[i].showTitle = true;
+        mp3Stations[i].fade = 200;
+        mp3Stations[i].shuffle = false;
+        mp3Stations[i].mp3Start = nullptr;
+        mp3Stations[i].currentTrack = 0;
+        mp3Stations[i].trackCount = 0;
+        mp3Stations[i].lastPositionMs = 0;
+    }
+}
+
+void WalkmanState::ReadConfig() {
+    config.Read();
+
+    // Scan mp3_stations folder for subfolders
+    stationCount = 0;
+    string rootPath = GAME_PATH((char*)"mp3_stations");
+    if (filesystem::exists(rootPath)) {
+        for (const auto& entry : filesystem::directory_iterator(rootPath)) {
+            if (entry.is_directory() && stationCount < 10) {
+                mp3Stations[stationCount].name = _strdup(entry.path().filename().string().c_str());
+                mp3Stations[stationCount].playlist = _strdup(entry.path().string().c_str()); // Store folder path
+                mp3Stations[stationCount].showTitle = true;
+                mp3Stations[stationCount].fade = 200; // Default fade
+                mp3Stations[stationCount].shuffle = false;
+                mp3Stations[stationCount].mp3Start = nullptr;
+                mp3Stations[stationCount].trackCount = 0;
+                mp3Stations[stationCount].currentTrack = 0;
+                mp3Stations[stationCount].lastPositionMs = 0;
+                stationCount++;
+            }
+        }
+    }
+}
+
 Mp3File* WalkmanState::GetMp3Track(int trackIndex) {
     if (currentStation >= stationCount) return nullptr;
     Mp3File* temp = mp3Stations[currentStation].mp3Start;
@@ -42,11 +84,11 @@ Mp3File* WalkmanState::GetMp3Track(int trackIndex) {
 
 bool WalkmanState::IsRadioOff() {
 #ifdef GTASA
-    return currentStation == stationCount + 13;
+    return currentStation == stationCount + GAME_STATION_COUNT;
 #elif defined(GTAVC)
-    return currentStation == stationCount + 9;
+    return currentStation == stationCount + GAME_STATION_COUNT;
 #elif defined(GTA3)
-    return currentStation == stationCount + 11;
+    return currentStation == stationCount + GAME_STATION_COUNT;
 #else
     return false;
 #endif
@@ -111,9 +153,20 @@ unsigned int WalkmanState::GetTrackCount() {
 
 void WalkmanState::SetListActive(bool active) {
     listActive = active;
+#ifdef GTASA
+    if (CPad::GetPad(0)) {
+        CPad::GetPad(0)->bPlayerSafe = active;
+        CPad::GetPad(0)->bDisablePlayerEnterCar = active;
+        CPad::GetPad(0)->bDisablePlayerDuck = active;
+        CPad::GetPad(0)->bDisablePlayerFireWeapon = active;
+        CPad::GetPad(0)->bDisablePlayerCycleWeapon = active;
+        CPad::GetPad(0)->bDisablePlayerJump = active;
+    }
+#else
     if (gameDisableKeyboard2) {
         *gameDisableKeyboard2 = active;
     }
+#endif
 }
 
 bool InputHandler::oldKeyState[256] = { false };
@@ -122,6 +175,17 @@ void WalkmanState::ProcessInput() {
     if (InputHandler::IsKeyJustPressed(config.ToggleList)) HandleKeyPress(config.ToggleList);
 
     if (listActive) {
+#ifdef GTASA
+        if (CPad::GetPad(0)) {
+            CPad::GetPad(0)->Clear(false, false);
+            CPad::GetPad(0)->NewState.LeftStickX = 0;
+            CPad::GetPad(0)->NewState.LeftStickY = 0;
+            CPad::GetPad(0)->NewState.DPadUp = 0;
+            CPad::GetPad(0)->NewState.DPadDown = 0;
+            CPad::GetPad(0)->NewState.DPadLeft = 0;
+            CPad::GetPad(0)->NewState.DPadRight = 0;
+        }
+#endif
         if (InputHandler::IsKeyJustPressed(config.ListChoose) || InputHandler::IsKeyJustPressed(VK_RETURN)) HandleKeyPress(VK_RETURN);
         if (InputHandler::IsKeyJustPressed(config.ListScrollUp) || InputHandler::IsKeyJustPressed(VK_UP)) HandleKeyPress(VK_UP);
         if (InputHandler::IsKeyJustPressed(config.ListScrollDown) || InputHandler::IsKeyJustPressed(VK_DOWN)) HandleKeyPress(VK_DOWN);

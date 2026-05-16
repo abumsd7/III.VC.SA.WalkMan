@@ -16,9 +16,8 @@ public:
     static void NextTrack();
     static void DeletePlaylists();
     static void StopStreamAndSavePosition();
-
-    static void ReadConfig();
     static void ChangeMp3Station(int stationIndex);
     static void CycleStation(int dir);
+    static void DumpRadioTables();
 };
 #endif

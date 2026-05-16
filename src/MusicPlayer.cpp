@@ -26,8 +26,6 @@ p_AIL_pause_stream MusicPlayer::pauseStream = nullptr;
 
 // Game variable pointers
 #ifdef GTAVC
-#define GAME_STATION_COUNT 9
-#define RADIO_OFF_VAL 10
 unsigned int* gameCurrentRadiostation = (unsigned int*)0x9839BC;   // CMusicManager::m_nRadioInCar (Base 0x980038 + Offset 0x3984)
 unsigned int* gameMp3Files = (unsigned int*)0x9753E0;   // _pMP3List (reVC)
 unsigned int* gameTrackCount = (unsigned int*)0xA108B0;   // _nNumOfMp3Files (reVC)
@@ -37,9 +35,6 @@ unsigned int* gameHDigDriver = (unsigned int*)0x978550;   // int gHDigDriver in 
 unsigned char* gameDisableKeyboard2 = (unsigned char*)0xA10AE4;  // CPad::m_bMapPadOneToPadTwo
 unsigned char* gameUserPause = (unsigned char*)0xA10B36;  // CTimer::m_UserPause
 #else
-#define GAME_STATION_COUNT 9
-#define RADIO_OFF_VAL 11
-#define NO_TRACK 197
 unsigned char* gameCurrentRadiostation = (unsigned char*)0x8F42BC;  // cMusicManager::m_nRadioInCar (Base 0x8F3964 + Offset 0x958)
 unsigned int* gameMp3Files = (unsigned int*)0x8E2C7C;   // _pMP3List (1.0 symbols)
 unsigned int* gameTrackCount = (unsigned int*)0x95CC00;   // _nNumOfMp3Files (1.0 symbols)
@@ -60,6 +55,7 @@ unsigned int MusicPlayer::adfSwitchTime[12] = { 0 };
 
 
 void MusicPlayer::Initialise() {
+
     // Initialize MSS pointers
 #ifdef GTAVC
     closeStream = patch::Get<p_AIL_close_stream>(0x6F25C0);
@@ -82,8 +78,8 @@ void MusicPlayer::Initialise() {
     streamStatus = patch::Get<p_AIL_stream_status>(0x61D674);
     serviceStream = patch::Get<p_AIL_service_stream>(0x61D660);
 #endif
-    ReadConfig();
-    currentStation = stationCount + 9; // Initialize to OFF
+    WalkmanState::ReadConfig();
+    currentStation = stationCount + GAME_STATION_COUNT; // Initialize to OFF
 
     if (stationCount > 0) {
 #ifdef GTAVC
@@ -304,29 +300,6 @@ void MusicPlayer::DeletePlaylists() {
     }
 }
 
-void MusicPlayer::ReadConfig() {
-    config.Read();
-
-    // Scan mp3_stations folder for subfolders
-    stationCount = 0;
-    std::string rootPath = GAME_PATH((char*)"mp3_stations");
-    if (std::filesystem::exists(rootPath)) {
-        for (const auto& entry : std::filesystem::directory_iterator(rootPath)) {
-            if (entry.is_directory() && stationCount < 10) {
-                mp3Stations[stationCount].name = _strdup(entry.path().filename().string().c_str());
-                mp3Stations[stationCount].playlist = _strdup(entry.path().string().c_str()); // Store folder path
-                mp3Stations[stationCount].showTitle = true;
-                mp3Stations[stationCount].fade = 200; // Default fade
-                mp3Stations[stationCount].shuffle = false;
-                mp3Stations[stationCount].mp3Start = nullptr;
-                mp3Stations[stationCount].trackCount = 0;
-                mp3Stations[stationCount].currentTrack = 0;
-                mp3Stations[stationCount].lastPositionMs = 0;
-                stationCount++;
-            }
-        }
-    }
-}
 
 void MusicPlayer::ChangeMp3Station(int stationIndex) {
     if (stationIndex < stationCount) {

@@ -10,12 +10,12 @@ extern unsigned int* gameHDigDriver;
 #endif
 
 void MP3Injection::InjectPlaylist(int stationIndex) {
-    std::string folderPath = WalkmanState::mp3Stations[stationIndex].playlist;
+    string folderPath = WalkmanState::mp3Stations[stationIndex].playlist;
     Mp3File* previousFile = nullptr;
 
-    std::vector<std::string> mp3Files = plugin::GetAllFilesInFolder(folderPath, ".mp3", true);
+    vector<string> mp3Files = plugin::GetAllFilesInFolder(folderPath, ".mp3", true);
 
-    for (const std::string& filePath : mp3Files) {
+    for (const string& filePath : mp3Files) {
         Mp3File* file = (Mp3File*)malloc(sizeof(Mp3File));
         strcpy(file->filename, filePath.c_str());
         file->nextFile = 0;
@@ -30,9 +30,9 @@ void MP3Injection::InjectPlaylist(int stationIndex) {
         HSTREAM streamHandle = BASS_StreamCreateFile(FALSE, file->filename, 0, 0, BASS_STREAM_DECODE);
         if (streamHandle) {
             UpdateMp3InfoWithID3v2Tags(file);
-            if (file->title == nullptr) {
+            if (file->title == nullptr || file->title[0] == '\0') {
                 UpdateMp3InfoWithID3v1Tags(file);
-                if (file->title == nullptr) {
+                if (file->title == nullptr || file->title[0] == '\0') {
                     char* fileNameOnly = strrchr(file->filename, '\\');
                     if (fileNameOnly) fileNameOnly++; else fileNameOnly = file->filename;
                     file->title = _strdup(fileNameOnly);
@@ -47,9 +47,9 @@ void MP3Injection::InjectPlaylist(int stationIndex) {
         unsigned int streamHandle = MusicPlayer::openStream(*gameHDigDriver, file->filename, 0);
         if (streamHandle) {
             UpdateMp3InfoWithID3v2Tags(file);
-            if (file->title == nullptr) {
+            if (file->title == nullptr || file->title[0] == '\0') {
                 UpdateMp3InfoWithID3v1Tags(file);
-                if (file->title == nullptr) {
+                if (file->title == nullptr || file->title[0] == '\0') {
                     char* fileNameOnly = strrchr(file->filename, '\\');
                     if (fileNameOnly) fileNameOnly++; else fileNameOnly = file->filename;
                     file->title = _strdup(fileNameOnly);
@@ -74,10 +74,10 @@ void MP3Injection::InjectPlaylist(int stationIndex) {
         else {
             free(file);
         }
+        }
     }
-}
 
-void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File* file) {
+void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File * file) {
     FILE* mp3 = fopen(file->filename, "rb");
     if (mp3) {
         ID3v1 id3tag;
@@ -101,7 +101,7 @@ void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File* file) {
     }
 }
 
-void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File* file) {
+void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File * file) {
     FILE* f = fopen(file->filename, "rb");
     if (f) {
         unsigned char header[10];
@@ -119,23 +119,45 @@ void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File* file) {
 
                 if (frameID[0] == 'T') {
                     unsigned char encoding = tagPtr[10];
-                    char tempStr[256] = { 0 };
-                    if (encoding == 0) { // ISO-8859-1
+                    char tempStr[512] = { 0 };
+
+                    if (encoding == 0 || encoding == 3) { // ISO-8859-1 or UTF-8
                         size_t len = frameSize - 1;
-                        if (len > 255) len = 255;
+                        if (len > 511) len = 511;
                         memcpy(tempStr, tagPtr + 11, len);
                     }
-                    else if (encoding == 1) { // UTF-16
-                        wchar_t wtemp[256] = { 0 };
+                    else if (encoding == 1) { // UTF-16 with BOM
+                        wchar_t wtemp[512] = { 0 };
                         size_t len = (frameSize - 1) / 2;
-                        if (len > 255) len = 255;
-                        memcpy(wtemp, tagPtr + 13, len * 2); // Skip BOM
-                        WideCharToMultiByte(CP_ACP, 0, wtemp, -1, tempStr, 256, nullptr, nullptr);
+                        unsigned char bom1 = tagPtr[11];
+                        unsigned char bom2 = tagPtr[12];
+                        if (bom1 == 0xFF && bom2 == 0xFE) { // Little Endian
+                            size_t maxLen = len > 511 ? 511 : len;
+                            memcpy(wtemp, tagPtr + 13, maxLen * 2);
+                        }
+                        else if (bom1 == 0xFE && bom2 == 0xFF) { // Big Endian
+                            size_t maxLen = len > 511 ? 511 : len;
+                            for (size_t k = 0; k < maxLen; k++) {
+                                wtemp[k] = (tagPtr[13 + k * 2] << 8) | tagPtr[13 + k * 2 + 1];
+                            }
+                        }
+                        WideCharToMultiByte(CP_ACP, 0, wtemp, -1, tempStr, 512, nullptr, nullptr);
+                    }
+                    else if (encoding == 2) { // UTF-16BE without BOM
+                        wchar_t wtemp[512] = { 0 };
+                        size_t len = (frameSize - 1) / 2;
+                        size_t maxLen = len > 511 ? 511 : len;
+                        for (size_t k = 0; k < maxLen; k++) {
+                            wtemp[k] = (tagPtr[11 + k * 2] << 8) | tagPtr[11 + k * 2 + 1];
+                        }
+                        WideCharToMultiByte(CP_ACP, 0, wtemp, -1, tempStr, 512, nullptr, nullptr);
                     }
 
-                    if (!strcmp(frameID, "TALB")) file->album = _strdup(tempStr);
-                    else if (!strcmp(frameID, "TPE1")) file->artist = _strdup(tempStr);
-                    else if (!strcmp(frameID, "TIT2")) file->title = _strdup(tempStr);
+                    if (tempStr[0] != '\0') {
+                        if (!strcmp(frameID, "TALB")) file->album = _strdup(tempStr);
+                        else if (!strcmp(frameID, "TPE1")) file->artist = _strdup(tempStr);
+                        else if (!strcmp(frameID, "TIT2")) file->title = _strdup(tempStr);
+                    }
                 }
                 tagPtr += 10 + frameSize;
             }

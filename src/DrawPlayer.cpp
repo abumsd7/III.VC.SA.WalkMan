@@ -93,6 +93,9 @@ void DrawPlayer::RenderList() {
     CFont::SetFontStyle(FONT_STANDARD);
 #elif defined(GTA3)
     CFont::SetFontStyle(FONT_BANK);
+#else
+    CFont::SetFontStyle(FONT_SUBTITLES);
+    CFont::SetWrapx(999999.0f);
 #endif
     CFont::SetScale(SCREEN_SCALE_X(config.TextScale.x), SCREEN_SCALE_Y(config.TextScale.y));
     if (WalkmanState::currentStation >= WalkmanState::stationCount) {
@@ -189,6 +192,9 @@ void DrawPlayer::DisplayMp3Station() {
     CFont::SetFontStyle(FONT_STANDARD);
 #elif defined(GTA3)
     CFont::SetFontStyle(FONT_BANK);
+#else
+    CFont::SetFontStyle(FONT_SUBTITLES);
+    CFont::SetWrapx(999999.0f);
 #endif
     CFont::SetScale(SCREEN_SCALE_X(config.StationTextScale.x), SCREEN_SCALE_Y(config.StationTextScale.y));
 
@@ -307,7 +313,7 @@ void DrawPlayer::TextWithBGRect(float x, float y, const char* str, CRGBA rectCol
     int j = 0;
     for (int i = 0; str[i] && j < 510; i++) {
         unsigned char c = (unsigned char)str[i];
-        if (c >= 32 && c <= 126) {
+        if (c >= 32 && c != 127) {
             cleanBuf[j++] = str[i];
         }
     }
@@ -344,7 +350,7 @@ void DrawPlayer::TextWithBGRect(float x, float y, const char* str, CRGBA rectCol
         if (offset < 0) offset = 0;
         if (offset > scrollRange) offset = scrollRange;
 
-        strncpy(scrollBuf, str + offset, maxChars);
+        strncpy(scrollBuf, cleanBuf + offset, maxChars);
         scrollBuf[maxChars] = '\0';
         displayStr = scrollBuf;
     }
@@ -371,8 +377,8 @@ void DrawPlayer::TextWithBGRect(float x, float y, const char* str, CRGBA rectCol
 #ifndef GTASA
     if (rightAlign) CFont::SetRightJustifyOn(); else CFont::SetRightJustifyOff();
 #else
-	CFont::SetOrientation(rightAlign ? ALIGN_RIGHT : ALIGN_LEFT);
-	CFont::SetJustify(rightAlign);
+    CFont::SetOrientation(rightAlign ? ALIGN_RIGHT : ALIGN_LEFT);
+    CFont::SetJustify(rightAlign);
 #endif
     CFont::PrintString(x, y, (char*)displayStr);
 }

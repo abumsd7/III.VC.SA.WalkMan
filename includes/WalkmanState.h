@@ -5,6 +5,9 @@
 #include <CPad.h>
 #include "WalkManConfig.h"
 #include "InputHandler.h"
+#include <string>
+
+using namespace std;
 
 typedef struct _ID3v1
 {
@@ -74,6 +77,8 @@ public:
     static float listFade;
     static int walkmanVolume;
 
+	static void Initialise();
+	static void ReadConfig();
     // Helper methods for DrawPlayer and shared state queries
     static Mp3File* GetMp3Track(int trackIndex);
     static bool IsRadioOff();
