@@ -74,10 +74,10 @@ void MP3Injection::InjectPlaylist(int stationIndex) {
         else {
             free(file);
         }
-        }
     }
+}
 
-void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File * file) {
+void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File* file) {
     FILE* mp3 = fopen(file->filename, "rb");
     if (mp3) {
         ID3v1 id3tag;
@@ -101,7 +101,7 @@ void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File * file) {
     }
 }
 
-void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File * file) {
+void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File* file) {
     FILE* f = fopen(file->filename, "rb");
     if (f) {
         unsigned char header[10];
@@ -138,7 +138,7 @@ void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File * file) {
                         else if (bom1 == 0xFE && bom2 == 0xFF) { // Big Endian
                             size_t maxLen = len > 511 ? 511 : len;
                             for (size_t k = 0; k < maxLen; k++) {
-                                wtemp[k] = (tagPtr[13 + k * 2] << 8) | tagPtr[13 + k * 2 + 1];
+                                wtemp[k] = (tagPtr[13 + k*2] << 8) | tagPtr[13 + k*2 + 1];
                             }
                         }
                         WideCharToMultiByte(CP_ACP, 0, wtemp, -1, tempStr, 512, nullptr, nullptr);
@@ -148,7 +148,7 @@ void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File * file) {
                         size_t len = (frameSize - 1) / 2;
                         size_t maxLen = len > 511 ? 511 : len;
                         for (size_t k = 0; k < maxLen; k++) {
-                            wtemp[k] = (tagPtr[11 + k * 2] << 8) | tagPtr[11 + k * 2 + 1];
+                            wtemp[k] = (tagPtr[11 + k*2] << 8) | tagPtr[11 + k*2 + 1];
                         }
                         WideCharToMultiByte(CP_ACP, 0, wtemp, -1, tempStr, 512, nullptr, nullptr);
                     }

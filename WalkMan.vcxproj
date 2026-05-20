@@ -332,6 +332,8 @@
     <ClInclude Include="includes\MusicPlayer.h" />
     <ClInclude Include="includes\DrawPlayer.h" />
     <ClInclude Include="includes\MusicPlayerSA.h" />
+    <ClInclude Include="includes\MusicPlayerSAMappings.h" />
+    <ClInclude Include="includes\MusicPlayerSATrackNames.h" />
     <ClInclude Include="includes\PadHelper.h" />
     <ClInclude Include="includes\SomeMacros.h" />
     <ClInclude Include="includes\WalkManConfig.h" />

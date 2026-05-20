@@ -48,6 +48,7 @@ struct Mp3Station
     int currentTrack;
     int trackCount;
     unsigned int lastPositionMs;
+    unsigned int lastSwitchTimeMs;
 };
 
 struct KeyConfig
@@ -83,6 +84,7 @@ public:
     static Mp3File* GetMp3Track(int trackIndex);
     static bool IsRadioOff();
     static const char* GetActiveStationName();
+    static const char* GetActiveTrackTitle();
     static void GetTrackPlaybackInfo(unsigned int& current_ms, unsigned int& total_ms);
     static unsigned int GetCurrentTrackIndex();
     static unsigned int GetTrackCount();

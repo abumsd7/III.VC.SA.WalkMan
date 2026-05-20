@@ -221,7 +221,23 @@ void DrawPlayer::DisplayMp3Station() {
 
         if (!file) return;
 
-        // 1. Title (Bottom)
+        // 1. Duration (Bottom)
+        unsigned int total_ms = 0, current_ms = 0;
+        WalkmanState::GetTrackPlaybackInfo(current_ms, total_ms);
+
+        if (total_ms > 0) {
+            int totalMin = (total_ms / 1000) / 60;
+            int totalSec = (total_ms / 1000) % 60;
+            int currentMin = (current_ms / 1000) / 60;
+            int currentSec = (current_ms / 1000) % 60;
+
+            char durationBuf[64];
+            sprintf(durationBuf, "%02d:%02d / %02d:%02d", currentMin, currentSec, totalMin, totalSec);
+            TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), durationBuf, rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
+            posY += config.StationLineGap;
+        }
+
+        // 2. Title
         if (file->title && file->title[0] != '\0') {
             TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), file->title, rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
         }
@@ -266,6 +282,16 @@ void DrawPlayer::DisplayMp3Station() {
         }
         else {
             TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), "Info unavailable", rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
+        }
+        posY += config.StationLineGap;
+
+        // Native Track Title (Middle)
+        const char* trackTitle = WalkmanState::GetActiveTrackTitle();
+        if (trackTitle && trackTitle[0] != '\0') {
+            TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), trackTitle, rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
+        }
+        else {
+            TextWithBGRect(stationX, SCREEN_SCALE_FROM_BOTTOM(posY), "Connecting...", rectCol, textCol, config.ItemPaddingX, config.ItemPaddingY, config.StationItemHeight, config.StationMaxChars);
         }
         posY += config.StationLineGap;
 

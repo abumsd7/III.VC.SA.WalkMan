@@ -44,7 +44,8 @@ void WalkmanState::Initialise() {
         mp3Stations[i].currentTrack = 0;
         mp3Stations[i].trackCount = 0;
         mp3Stations[i].lastPositionMs = 0;
-    }
+        mp3Stations[i].lastSwitchTimeMs = GetTickCount();
+	}
 }
 
 void WalkmanState::ReadConfig() {
@@ -65,6 +66,7 @@ void WalkmanState::ReadConfig() {
                 mp3Stations[stationCount].trackCount = 0;
                 mp3Stations[stationCount].currentTrack = 0;
                 mp3Stations[stationCount].lastPositionMs = 0;
+                mp3Stations[stationCount].lastSwitchTimeMs = GetTickCount();
                 stationCount++;
             }
         }
@@ -110,6 +112,14 @@ const char* WalkmanState::GetActiveStationName() {
     if (nativeIdx >= 0 && nativeIdx < 12) return gameRadioNames[nativeIdx];
 #endif
     return "Unknown";
+}
+
+const char* WalkmanState::GetActiveTrackTitle() {
+#ifdef GTASA
+    return MusicPlayerSA::GetActiveTrackTitle();
+#else
+    return "";
+#endif
 }
 
 void WalkmanState::GetTrackPlaybackInfo(unsigned int& current_ms, unsigned int& total_ms) {
@@ -244,24 +254,14 @@ void WalkmanState::HandleKeyPress(int key) {
         ChangeMp3Station(key - 0x31);
     }
     else if (key == config.PrevTrack) {
-        if (currentStation < stationCount) {
-            StopStream();
-            skipping = -1;
-            NextTrack();
-        }
-        else {
-            CycleStation(-1);
-        }
+        StopStream();
+        skipping = -1;
+        NextTrack();
     }
     else if (key == config.NextTrack) {
-        if (currentStation < stationCount) {
-            StopStream();
-            skipping = +1;
-            NextTrack();
-        }
-        else {
-            CycleStation(1);
-        }
+        StopStream();
+        skipping = +1;
+        NextTrack();
     }
     else if (key == config.ToggleShuffle) {
         if (currentStation < stationCount)
