@@ -16,8 +16,9 @@
 #include <fstream>
 #include <iomanip>
 
+using namespace std;
 using namespace plugin;
-namespace fs = filesystem;
+namespace fs = std::filesystem;
 
 // Static member definitions
 DWORD MusicPlayerSA::walkmanStream = 0;
@@ -228,7 +229,7 @@ void MusicPlayerSA::ChooseTracksForNativeStation(int stationIdx) {
             int identId = RandomNumInRange(sData.identMin, sData.identMax);
             if (findTrackBySoundId(stationIdx, identId) != -1) {
                 char buf[64];
-                sprintf(buf, "Station ID (%d)", identId);
+                snprintf(buf, sizeof(buf), "Station ID (%d)", identId);
                 queueUp(identId, 0, buf, stationIdx);
                 addHist(st.identHistory, identId, 8);
                 return true;
@@ -241,7 +242,7 @@ void MusicPlayerSA::ChooseTracksForNativeStation(int stationIdx) {
         int adId = RandomNumInRange(66, 134);
         if (findTrackBySoundId(11, adId) != -1) {
             char buf[64];
-            sprintf(buf, "Commercial (%d)", adId);
+            snprintf(buf, sizeof(buf), "Commercial (%d)", adId);
             queueUp(adId, 1, buf, 11);
             addHist(st.advertHistory, adId, 25);
             return true;
@@ -254,7 +255,7 @@ void MusicPlayerSA::ChooseTracksForNativeStation(int stationIdx) {
             int bantId = RandomNumInRange(sData.banterMin, sData.banterMax);
             if (findTrackBySoundId(stationIdx, bantId) != -1) {
                 char buf[64];
-                sprintf(buf, "DJ Banter (%d)", bantId);
+                snprintf(buf, sizeof(buf), "DJ Banter (%d)", bantId);
                 queueUp(bantId, 2, buf, stationIdx);
                 addHist(st.banterHistory, bantId, 15);
                 return true;
@@ -293,14 +294,14 @@ void MusicPlayerSA::ChooseTracksForNativeStation(int stationIdx) {
         const auto& tData = sData.tracks[songIdx];
         st.currentSongIndex = songIdx;
         char buf[64];
-        sprintf(buf, "Song %d (%d)", songIdx + 1, tData.soundId);
+        snprintf(buf, sizeof(buf), "Song %d (%d)", songIdx + 1, tData.soundId);
         queueUp(tData.soundId, 4, buf, stationIdx);
 
         if (tData.outroMin != 1922 && tData.outroMax >= tData.outroMin) {
             int outroId = RandomNumInRange(tData.outroMin, tData.outroMax);
             if (findTrackBySoundId(stationIdx, outroId) != -1) {
                 char outroBuf[64];
-                sprintf(outroBuf, "Song %d Outro (%d)", songIdx + 1, outroId);
+                snprintf(outroBuf, sizeof(outroBuf), "Song %d Outro (%d)", songIdx + 1, outroId);
                 queueUp(outroId, 5, outroBuf, stationIdx);
             }
         }
@@ -312,16 +313,16 @@ void MusicPlayerSA::ChooseTracksForNativeStation(int stationIdx) {
         char buf[128];
         const char* realTitle = GetRealTrackTitle(tData.soundId);
         if (realTitle) {
-            sprintf(buf, "%s", realTitle);
+            snprintf(buf, sizeof(buf), "%s", realTitle);
         } else {
-            sprintf(buf, "Song %d (%d)", songIdx + 1, tData.soundId);
+            snprintf(buf, sizeof(buf), "Song %d (%d)", songIdx + 1, tData.soundId);
         }
 
         if (tData.introMin != 1922 && tData.introMax >= tData.introMin) {
             int introId = RandomNumInRange(tData.introMin, tData.introMax);
             if (findTrackBySoundId(stationIdx, introId) != -1) {
                 char introBuf[64];
-                sprintf(introBuf, "Song %d Intro (%d)", songIdx + 1, introId);
+                snprintf(introBuf, sizeof(introBuf), "Song %d Intro (%d)", songIdx + 1, introId);
                 queueUp(introId, 3, introBuf, stationIdx);
             }
         }
@@ -332,7 +333,7 @@ void MusicPlayerSA::ChooseTracksForNativeStation(int stationIdx) {
             int outroId = RandomNumInRange(tData.outroMin, tData.outroMax);
             if (findTrackBySoundId(stationIdx, outroId) != -1) {
                 char outroBuf[64];
-                sprintf(outroBuf, "Song %d Outro (%d)", songIdx + 1, outroId);
+                snprintf(outroBuf, sizeof(outroBuf), "Song %d Outro (%d)", songIdx + 1, outroId);
                 queueUp(outroId, 5, outroBuf, stationIdx);
             }
         }
@@ -377,7 +378,7 @@ void MusicPlayerSA::ChooseTracksForNativeStation(int stationIdx) {
                 int outroId = RandomNumInRange(tData.outroMin, tData.outroMax);
                 if (findTrackBySoundId(stationIdx, outroId) != -1) {
                     char outroBuf[64];
-                    sprintf(outroBuf, "Song %d Outro (%d)", songIdx + 1, outroId);
+                    snprintf(outroBuf, sizeof(outroBuf), "Song %d Outro (%d)", songIdx + 1, outroId);
                     queueUp(outroId, 5, outroBuf, stationIdx);
                     return;
                 }
@@ -411,9 +412,9 @@ void MusicPlayerSA::ChooseTracksForNativeStation(int stationIdx) {
         char buf[128];
         const char* realTitle = GetRealTrackTitle(st.tracks[randomFallback].soundId);
         if (realTitle) {
-            sprintf(buf, "%s", realTitle);
+            snprintf(buf, sizeof(buf), "%s", realTitle);
         } else {
-            sprintf(buf, "Track %d (%d)", randomFallback + 1, st.tracks[randomFallback].soundId);
+            snprintf(buf, sizeof(buf), "Track %d (%d)", randomFallback + 1, st.tracks[randomFallback].soundId);
         }
         queueUp(st.tracks[randomFallback].soundId, 4, buf, stationIdx);
     }
@@ -730,7 +731,7 @@ void MusicPlayerSA::DeletePlaylists() {
 }
 
 void MusicPlayerSA::DumpRadioTables() {
-    ofstream out("radio_sound_tables_dump.txt");
+    std::ofstream out("radio_sound_tables_dump.txt");
     if (!out.is_open()) return;
 
     out << "=========================================================================\n";
@@ -748,7 +749,7 @@ void MusicPlayerSA::DumpRadioTables() {
     auto dumpTableExact = [&](const char* tableName, MinMax* table, int count) {
         out << "--- " << tableName << " ---\n";
         for (int i = 0; i < count; i++) {
-            out << setw(20) << left << stationNames[i] << " [Min: " << setw(5) << table[i].minId << ", Max: " << setw(5) << table[i].maxId << "] Exact IDs: ";
+            out << std::setw(20) << std::left << stationNames[i] << " [Min: " << std::setw(5) << table[i].minId << ", Max: " << std::setw(5) << table[i].maxId << "] Exact IDs: ";
             if (table[i].minId == 0 && table[i].maxId == 0) {
                 out << "NONE\n";
                 continue;
@@ -801,9 +802,9 @@ void MusicPlayerSA::DumpRadioTables() {
             if (tracks[idx] == 0 && intros[idx].minId == 0 && outros[idx].minId == 0) {
                 continue; // Skip empty slots
             }
-            out << "  Track " << setw(2) << t << ": TrackSoundID = " << setw(6) << tracks[idx]
-                << " | Intro [Min = " << setw(5) << intros[idx].minId << ", Max = " << setw(5) << intros[idx].maxId << "]"
-                << " | Outro [Min = " << setw(5) << outros[idx].minId << ", Max = " << setw(5) << outros[idx].maxId << "]\n";
+            out << "  Track " << std::setw(2) << t << ": TrackSoundID = " << std::setw(6) << tracks[idx]
+                << " | Intro [Min = " << std::setw(5) << intros[idx].minId << ", Max = " << std::setw(5) << intros[idx].maxId << "]"
+                << " | Outro [Min = " << std::setw(5) << outros[idx].minId << ", Max = " << std::setw(5) << outros[idx].maxId << "]\n";
         }
         out << "\n";
     }

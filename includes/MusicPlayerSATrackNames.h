@@ -1,4 +1,6 @@
 #pragma once
+#ifndef MUSIC_PLAYER_SA_TRACKNAMES_H
+#define MUSIC_PLAYER_SA_TRACKNAMES_H
 
 #ifdef GTASA
 #include <string>
@@ -8,10 +10,9 @@
 #include <extensions/Config.h>
 #include <extensions/Paths.h>
 
-using namespace std;
 class MusicPlayerSaTrackNames {
 public:
-    static inline unordered_map<int, string> trackNames;
+    static inline std::unordered_map<int, std::string> trackNames;
 
     static inline void SetDefaults() {
         trackNames.clear();
@@ -233,8 +234,8 @@ public:
     static inline void Read() {
         SetDefaults();
 
-        string path = GAME_PATH("\\scripts\\walkman_tracks.ini");
-        ifstream f(path);
+        std::string path = GAME_PATH("\\scripts\\walkman_tracks.ini");
+        std::ifstream f(path);
         if (!f.good()) {
             f.close();
             Write();
@@ -244,20 +245,20 @@ public:
 
         plugin::config_file ini(path);
         for (auto& pair : trackNames) {
-            string key = to_string(pair.first);
+            std::string key = std::to_string(pair.first);
             pair.second = ini[key].asString(pair.second);
         }
     }
 
     static inline void Write() {
-        string path = GAME_PATH("\\scripts\\walkman_tracks.ini");
-        ofstream out(path);
+        std::string path = GAME_PATH("\\scripts\\walkman_tracks.ini");
+        std::ofstream out(path);
         if (!out.is_open()) return;
 
         out << "; WalkMan GTA San Andreas Track Names Configuration\n";
         out << "; Format: SoundID = \"Track Title\"\n\n";
 
-        auto writeSection = [&](const string& name, const vector<int>& ids) {
+        auto writeSection = [&](const std::string& name, const std::vector<int>& ids) {
             out << "[" << name << "]\n";
             for (int id : ids) {
                 out << id << "=\"" << trackNames[id] << "\"\n";
@@ -294,3 +295,4 @@ inline const char *GetRealTrackTitle(int soundId) {
 }
 
 #endif // GTASA
+#endif // MUSIC_PLAYER_SA_TRACKNAMES_H

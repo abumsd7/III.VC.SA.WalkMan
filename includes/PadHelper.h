@@ -2,8 +2,6 @@
 #include <plugin.h>
 #include <CPad.h>
 
-using namespace plugin;
-
 class PadHelper {
 public:
 static bool GetMouseWheelUpJustDown() { return !!(CPad::GetPad(0)->NewMouseControllerState.wheelUp && !CPad::GetPad(0)->OldMouseControllerState.wheelUp); }
@@ -16,4 +14,4 @@ static bool GetMouseWheelUpUp() { return !CPad::GetPad(0)->OldMouseControllerSta
 static bool GetMouseWheelDownUp() { return !CPad::GetPad(0)->OldMouseControllerState.wheelDown; }
 static bool GetChar(int32_t c) { return CPad::GetPad(0)->NewKeyState.standardKeys[c]; }
 static bool GetCharJustDown(int32_t c) { return !!(CPad::GetPad(0)->NewKeyState.standardKeys[c] && !CPad::GetPad(0)->OldKeyState.standardKeys[c]); }
-}
+};

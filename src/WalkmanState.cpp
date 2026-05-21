@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <extensions/Paths.h>
 
+using namespace std;
+
 #ifdef GTASA
 #include "../includes/MusicPlayerSA.h"
 #include <CPad.h>

@@ -8,8 +8,6 @@
 #include <string>
 #include <fstream>
 
-using namespace std;
-
 struct NativeTrack {
     DWORD startOffset;
     DWORD length;
@@ -17,18 +15,18 @@ struct NativeTrack {
 };
 
 struct NativeStation {
-    string filename;
-    vector<NativeTrack> tracks;
+    std::string filename;
+    std::vector<NativeTrack> tracks;
     int currentTrackIndex;
     int currentTrackType; // 0=Indent, 1=Advert, 2=Banter, 3=Intro, 4=Track, 5=Outro
     int currentSongIndex; // 0..30
-    string currentDisplayTitle;
+    std::string currentDisplayTitle;
     
     // Active Queue
-    vector<int> trackQueue;          // SoundIDs
-    vector<int> trackTypeQueue;      // Track types
-    vector<string> displayTitleQueue;// Display titles
-    vector<int> pakIdxQueue;         // Package index (stationIdx or 11 for adverts)
+    std::vector<int> trackQueue;          // SoundIDs
+    std::vector<int> trackTypeQueue;      // Track types
+    std::vector<std::string> displayTitleQueue;// Display titles
+    std::vector<int> pakIdxQueue;         // Package index (stationIdx or 11 for adverts)
     
     // Background simulation & Active track tracking
     int currentPakIdx;               // Package index of actively playing track
@@ -36,14 +34,14 @@ struct NativeStation {
     unsigned int lastSwitchTimeMs;   // GetTickCount() when switched away
 
     // History buffers
-    vector<int> advertHistory;
-    vector<int> musicHistory;
-    vector<int> banterHistory;
-    vector<int> identHistory;
+    std::vector<int> advertHistory;
+    std::vector<int> musicHistory;
+    std::vector<int> banterHistory;
+    std::vector<int> identHistory;
 };
 
 struct NativeTrackStream {
-    ifstream file;
+    std::ifstream file;
     DWORD startOffset;
     DWORD length;
     DWORD currentOffset;
@@ -67,7 +65,7 @@ public:
 
     // Native radio methods
     static void ScanNativeStations();
-    static int GetPerfectSoundId(const string& stem, int trackIdx);
+    static int GetPerfectSoundId(const std::string& stem, int trackIdx);
     static void ChooseTracksForNativeStation(int stationIdx);
     static const char* GetActiveTrackTitle();
 

@@ -7,8 +7,6 @@
 #include "InputHandler.h"
 #include <string>
 
-using namespace std;
-
 typedef struct _ID3v1
 {
     char tag[3];

@@ -3,8 +3,6 @@
 #define MUSIC_PLAYER_SA_MAPPINGS_H
 #include <vector>
 
-using namespace std;
-
 struct StaticTrackData {
     int soundId;
     int introMin, introMax;
@@ -14,10 +12,11 @@ struct StaticTrackData {
 struct StaticStationData {
     int identMin, identMax;
     int banterMin, banterMax;
-    vector<StaticTrackData> tracks;
+    std::vector<StaticTrackData> tracks;
 };
 
 extern const StaticStationData stationTable[11];
+
 
 const StaticStationData stationTable[11] = {
     // 0: Playback FM

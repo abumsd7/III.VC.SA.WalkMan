@@ -4,6 +4,8 @@
 #include <extensions/Paths.h>
 #include <fstream>
 
+using namespace std;
+
 WalkManConfig config;
 
 WalkManConfig::WalkManConfig() {

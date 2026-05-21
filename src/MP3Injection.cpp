@@ -9,6 +9,8 @@
 extern unsigned int* gameHDigDriver;
 #endif
 
+using namespace std;
+
 void MP3Injection::InjectPlaylist(int stationIndex) {
     string folderPath = WalkmanState::mp3Stations[stationIndex].playlist;
     Mp3File* previousFile = nullptr;
@@ -17,7 +19,7 @@ void MP3Injection::InjectPlaylist(int stationIndex) {
 
     for (const string& filePath : mp3Files) {
         Mp3File* file = (Mp3File*)malloc(sizeof(Mp3File));
-        strcpy(file->filename, filePath.c_str());
+        strcpy_s(file->filename, sizeof(file->filename), filePath.c_str());
         file->nextFile = 0;
         file->unknown1 = 0;
         file->unknown2 = 0;
@@ -78,7 +80,8 @@ void MP3Injection::InjectPlaylist(int stationIndex) {
 }
 
 void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File* file) {
-    FILE* mp3 = fopen(file->filename, "rb");
+    FILE* mp3 = nullptr;
+    fopen_s(&mp3, file->filename, "rb");
     if (mp3) {
         ID3v1 id3tag;
         fseek(mp3, -128, SEEK_END);
@@ -102,7 +105,8 @@ void MP3Injection::UpdateMp3InfoWithID3v1Tags(Mp3File* file) {
 }
 
 void MP3Injection::UpdateMp3InfoWithID3v2Tags(Mp3File* file) {
-    FILE* f = fopen(file->filename, "rb");
+    FILE* f = nullptr;
+    fopen_s(&f, file->filename, "rb");
     if (f) {
         unsigned char header[10];
         if (fread(header, 10, 1, f) == 1 && header[0] == 'I' && header[1] == 'D' && header[2] == '3') {

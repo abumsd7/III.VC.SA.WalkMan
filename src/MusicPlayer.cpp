@@ -88,9 +88,9 @@ void MusicPlayer::Initialise() {
         patch::ReplaceFunctionCall(0x5D7340, DeletePlaylists); //patching call delete_mp3_files
 
         // Force MP3 Radio Channel to be available (0x5D80E0 is IsMP3RadioChannelAvailable in this version)
-        patch::SetChar(0x5D80E0, 0xB8); // mov eax, 1
+        patch::SetChar(0x5D80E0, static_cast<char>(0xB8)); // mov eax, 1
         patch::SetInt(0x5D80E1, 1);
-        patch::SetChar(0x5D80E5, 0xC3); // ret
+        patch::SetChar(0x5D80E5, static_cast<char>(0xC3)); // ret
 #else
         // Hook into mp3 processing
         patch::ReplaceFunctionCall(0x566C7D, LoadPlaylists);
@@ -98,9 +98,9 @@ void MusicPlayer::Initialise() {
 
         // bRadioOff = true;
         // Force MP3 Radio Channel to be available
-        patch::SetChar(0x57A9C0, 0xB8); // mov eax, 1
+        patch::SetChar(0x57A9C0, static_cast<char>(0xB8)); // mov eax, 1
         patch::SetInt(0x57A9C1, 1);
-        patch::SetChar(0x57A9C5, 0xC3); // ret
+        patch::SetChar(0x57A9C5, static_cast<char>(0xC3)); // ret
 #endif
     }
 
@@ -135,7 +135,7 @@ void MusicPlayer::Update() {
 
         bool walkmanActive = (currentStation != stationCount + GAME_STATION_COUNT);
         if (walkmanActive && *(unsigned char*)0x57D690 != 0xC3)
-            patch::SetChar(0x57D690, 0xC3);
+            patch::SetChar(0x57D690, static_cast<char>(0xC3));
         else if (!walkmanActive && *(unsigned char*)0x57D690 == 0xC3)
             patch::SetChar(0x57D690, sgmOrigByte);
     }
@@ -189,7 +189,7 @@ void MusicPlayer::Update() {
                     static char safeAdfPath[260];
                     // We MUST use a writable buffer because sampman_miles.cpp 
                     // uses strcpy to replace ".ADF" with ".mp3" internally!
-                    sprintf(safeAdfPath, "AUDIO\\%s", nativePaths[gameRadioID]);
+                    snprintf(safeAdfPath, sizeof(safeAdfPath), "AUDIO\\%s", nativePaths[gameRadioID]);
                     pathToPlay = safeAdfPath;
                 }
             }

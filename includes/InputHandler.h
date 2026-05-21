@@ -2,21 +2,20 @@
 #include <plugin.h>
 #include <CPad.h>
 
-using namespace plugin;
-
 class InputHandler {
 public:
     static bool oldKeyState[256];
 
     static bool IsKeyJustPressed(unsigned int key) {
-        bool current = KeyPressed(key);
+        bool current = plugin::KeyPressed(key);
         bool pressed = current && !oldKeyState[key];
         return pressed;
     }
 
     static void UpdateOldKeyState() {
-        for (int i = 0; i < 256; i++) oldKeyState[i] = KeyPressed(i);
+        for (int i = 0; i < 256; i++) oldKeyState[i] = plugin::KeyPressed(i);
     }
+
 
     static void ResetKeyState() {
         for (int i = 0; i < 256; i++) oldKeyState[i] = false;
