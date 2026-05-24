@@ -23,6 +23,7 @@ void WalkManConfig::SetDefaults() {
     ListScrollDown = VK_DOWN;
     ListChoose = VK_RETURN;
     ReloadKey = VK_LCONTROL;
+	ControlDisableToggle = 1;
 
     ListStartX = 25.0f;
     ListStartY = 265.0f;
@@ -36,7 +37,7 @@ void WalkManConfig::SetDefaults() {
     ItemPaddingX = 2.0f;
     ItemPaddingY = 2.0f;
     TextScrollSpeed = 8;
-    HelperTextOffset = CVector2D(0.0f, 2.0f);
+    HelperTextOffset = CVector2D(9.0f, -65.0f);
 
     StationStartX = 72.0f;
     StationStartY = 155.0f;
@@ -72,6 +73,7 @@ void WalkManConfig::Read() {
     ListScrollDown = ini["LIST_SCROLL_DOWN"].asInt(ListScrollDown);
     ListChoose = ini["LIST_CHOOSE"].asInt(ListChoose);
     ReloadKey = ini["RELOAD_CONFIG_KEY"].asInt(ReloadKey);
+    ControlDisableToggle = ini["CONTROL_DISABLE_TOGGLE"].asInt(ControlDisableToggle);
 
     // UI - List
     ListStartX = ini["LIST_START_X"].asFloat(ListStartX);
@@ -120,6 +122,7 @@ void WalkManConfig::Write() {
     out << "LIST_SCROLL_DOWN=" << ListScrollDown << "\n";
     out << "LIST_CHOOSE=" << ListChoose << "\n";
     out << "RELOAD_CONFIG_KEY=" << ReloadKey << "\n\n";
+	out << "CONTROL_DISABLE_TOGGLE=" << ControlDisableToggle << "\n\n";
 
     out << "[LIST_UI]\n";
     out << "; Track browser list layout\n";

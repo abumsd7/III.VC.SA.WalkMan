@@ -16,6 +16,7 @@ public:
     int ListScrollDown;
     int ListChoose;
     int ReloadKey;
+	int ControlDisableToggle;
 
     // UI - List
     float ListStartX;

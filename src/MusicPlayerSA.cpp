@@ -439,7 +439,7 @@ void MusicPlayerSA::Initialise() {
     ScanNativeStations();
     currentStation = stationCount + GAME_STATION_COUNT;
     InputHandler::ResetKeyState();
-    DumpRadioTables();
+    //DumpRadioTables();
 }
 
 void MusicPlayerSA::Update() {
@@ -730,6 +730,8 @@ void MusicPlayerSA::DeletePlaylists() {
     BASS_Free();
 }
 
+// This function is for debugging and research purposes to understand the radio sound tables in GTA San Andreas.
+/*
 void MusicPlayerSA::DumpRadioTables() {
     std::ofstream out("radio_sound_tables_dump.txt");
     if (!out.is_open()) return;
@@ -811,4 +813,5 @@ void MusicPlayerSA::DumpRadioTables() {
 
     out.close();
 }
+*/
 #endif

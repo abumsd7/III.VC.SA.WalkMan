@@ -164,7 +164,9 @@ unsigned int WalkmanState::GetTrackCount() {
 }
 
 void WalkmanState::SetListActive(bool active) {
+
     listActive = active;
+    if (config.ControlDisableToggle == 0) return;
 #ifdef GTASA
     if (CPad::GetPad(0)) {
         CPad::GetPad(0)->bPlayerSafe = active;
@@ -188,14 +190,16 @@ void WalkmanState::ProcessInput() {
 
     if (listActive) {
 #ifdef GTASA
-        if (CPad::GetPad(0)) {
-            CPad::GetPad(0)->Clear(false, false);
-            CPad::GetPad(0)->NewState.LeftStickX = 0;
-            CPad::GetPad(0)->NewState.LeftStickY = 0;
-            CPad::GetPad(0)->NewState.DPadUp = 0;
-            CPad::GetPad(0)->NewState.DPadDown = 0;
-            CPad::GetPad(0)->NewState.DPadLeft = 0;
-            CPad::GetPad(0)->NewState.DPadRight = 0;
+        if (config.ControlDisableToggle != 0) {
+            if (CPad::GetPad(0)) {
+                CPad::GetPad(0)->Clear(false, false);
+                CPad::GetPad(0)->NewState.LeftStickX = 0;
+                CPad::GetPad(0)->NewState.LeftStickY = 0;
+                CPad::GetPad(0)->NewState.DPadUp = 0;
+                CPad::GetPad(0)->NewState.DPadDown = 0;
+                CPad::GetPad(0)->NewState.DPadLeft = 0;
+                CPad::GetPad(0)->NewState.DPadRight = 0;
+            }
         }
 #endif
         if (InputHandler::IsKeyJustPressed(config.ListChoose) || InputHandler::IsKeyJustPressed(VK_RETURN)) HandleKeyPress(VK_RETURN);

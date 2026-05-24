@@ -61,7 +61,7 @@ public:
     static void StopStreamAndSavePosition();
     static void ChangeMp3Station(int stationIndex);
     static void CycleStation(int dir);
-    static void DumpRadioTables();
+    //static void DumpRadioTables();
 
     // Native radio methods
     static void ScanNativeStations();
