@@ -6,20 +6,9 @@ class InputHandler {
 public:
     static bool oldKeyState[256];
 
-    static bool IsKeyJustPressed(unsigned int key) {
-        bool current = plugin::KeyPressed(key);
-        bool pressed = current && !oldKeyState[key];
-        return pressed;
-    }
-
-    static void UpdateOldKeyState() {
-        for (int i = 0; i < 256; i++) oldKeyState[i] = plugin::KeyPressed(i);
-    }
-
-
-    static void ResetKeyState() {
-        for (int i = 0; i < 256; i++) oldKeyState[i] = false;
-    }
+    static bool IsKeyJustPressed(unsigned int key);
+    static void UpdateOldKeyState();
+    static void ResetKeyState();
 
     static bool GetMouseWheelUpJustDown() { return !!(CPad::GetPad(0)->NewMouseControllerState.wheelUp && !CPad::GetPad(0)->OldMouseControllerState.wheelUp); }
     static bool GetMouseWheelDownJustDown() { return !!(CPad::GetPad(0)->NewMouseControllerState.wheelDown && !CPad::GetPad(0)->OldMouseControllerState.wheelDown); }

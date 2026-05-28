@@ -319,6 +319,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="src\InputHandler.cpp" />
     <ClCompile Include="src\MP3Injection.cpp" />
     <ClCompile Include="src\MusicPlayer.cpp" />
     <ClCompile Include="src\DrawPlayer.cpp" />

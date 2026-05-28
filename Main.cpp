@@ -28,7 +28,7 @@ struct Main
             if (config.ReloadKey) {
                 Events::gameProcessEvent += [] {
                     if (config.ReloadKey != 0) {
-                        if (config.ReloadKey == -1 || KeyPressed(config.ReloadKey)) {
+                        if (config.ReloadKey == -1 || InputHandler::IsKeyJustPressed(config.ReloadKey)) {
                             config.Read();
 #ifdef GTASA
                             MusicPlayerSaTrackNames::Read();
