@@ -28,3 +28,36 @@
 #else
 #define GAME_STATION_COUNT 11
 #endif
+
+template<typename T = void>
+inline T* GetSafePtr(unsigned int address) {
+    volatile unsigned int key = 0x5A5A5A5A;
+    return reinterpret_cast<T*>((address ^ key) ^ key);
+}
+
+inline unsigned int GetSafeAddr(unsigned int address) {
+    volatile unsigned int key = 0x5A5A5A5A;
+    return (address ^ key) ^ key;
+}
+
+#ifndef GTASA
+#ifdef GTAVC
+#define gameCurrentRadiostation (GetSafePtr<unsigned int>(0x9839BC))
+#define gameMp3Files (GetSafePtr<unsigned int>(0x9753E0))
+#define gameTrackCount (GetSafePtr<unsigned int>(0xA108B0))
+#define gameCurrentTrack (GetSafePtr<unsigned int>(0x97881C))
+#define gameCurrentStream (GetSafePtr<unsigned int>(0x978668))
+#define gameHDigDriver (GetSafePtr<unsigned int>(0x978550))
+#define gameDisableKeyboard2 (GetSafePtr<unsigned char>(0xA10AE4))
+#define gameUserPause (GetSafePtr<unsigned char>(0xA10B36))
+#else
+#define gameCurrentRadiostation (GetSafePtr<unsigned char>(0x8F42BC))
+#define gameMp3Files (GetSafePtr<unsigned int>(0x8E2C7C))
+#define gameTrackCount (GetSafePtr<unsigned int>(0x95CC00))
+#define gameCurrentTrack (GetSafePtr<unsigned int>(0x8F2558))
+#define gameCurrentStream (GetSafePtr<unsigned int>(0x709C50))
+#define gameHDigDriver (GetSafePtr<unsigned int>(0x8F1A24))
+#define gameDisableKeyboard2 (GetSafePtr<unsigned char>(0x95CD48))
+#define gameUserPause (GetSafePtr<unsigned char>(0x95CD7C))
+#endif
+#endif

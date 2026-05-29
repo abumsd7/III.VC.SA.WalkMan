@@ -1,7 +1,8 @@
 #include "../includes/WalkmanState.h"
 #include "../includes/WalkManConfig.h"
 #include "../includes/SomeMacros.h"
-#include <filesystem>
+#include "../includes/MP3Injection.h"
+#include "../includes/ProcessHelper.h"
 #include <extensions/Paths.h>
 
 using namespace std;
@@ -26,16 +27,16 @@ float WalkmanState::listAlpha = 0.0f;
 float WalkmanState::listFade = 0.0f;
 int WalkmanState::walkmanVolume = 64;
 
-extern unsigned char* gameDisableKeyboard2;
 #ifndef GTASA
-extern unsigned int* gameTrackCount;
-extern unsigned int* gameCurrentTrack;
 extern const char* gameRadioNames[];
 #else
 extern const char* gameRadioNames[13];
 #endif
 
 void WalkmanState::Initialise() {
+    for (int i = 0; i < stationCount; i++) {
+        MP3Injection::InjectPlaylist(i);
+    }
     for (int i = 0; i < 10; i++) {
         mp3Stations[i].name = nullptr;
         mp3Stations[i].playlist = nullptr;
@@ -46,32 +47,33 @@ void WalkmanState::Initialise() {
         mp3Stations[i].currentTrack = 0;
         mp3Stations[i].trackCount = 0;
         mp3Stations[i].lastPositionMs = 0;
-        mp3Stations[i].lastSwitchTimeMs = GetTickCount();
+        mp3Stations[i].lastSwitchTimeMs = ProcessHelper::GetTime();
 	}
 }
+
+#include <windows.h>
 
 void WalkmanState::ReadConfig() {
     config.Read();
 
-    // Scan mp3_stations folder for subfolders
     stationCount = 0;
-    string rootPath = GAME_PATH((char*)"mp3_stations");
-    if (filesystem::exists(rootPath)) {
-        for (const auto& entry : filesystem::directory_iterator(rootPath)) {
-            if (entry.is_directory() && stationCount < 10) {
-                mp3Stations[stationCount].name = _strdup(entry.path().filename().string().c_str());
-                mp3Stations[stationCount].playlist = _strdup(entry.path().string().c_str()); // Store folder path
-                mp3Stations[stationCount].showTitle = true;
-                mp3Stations[stationCount].fade = 200; // Default fade
-                mp3Stations[stationCount].shuffle = false;
-                mp3Stations[stationCount].mp3Start = nullptr;
-                mp3Stations[stationCount].trackCount = 0;
-                mp3Stations[stationCount].currentTrack = 0;
-                mp3Stations[stationCount].lastPositionMs = 0;
-                mp3Stations[stationCount].lastSwitchTimeMs = GetTickCount();
-                stationCount++;
-            }
-        }
+    string rootPath = GAME_PATH("mp3_stations");
+    
+    std::vector<std::string> subDirs = ProcessHelper::FindDirs(rootPath);
+    for (const auto& dirName : subDirs) {
+        if (stationCount >= 10) break;
+        string fullPath = rootPath + "\\" + dirName;
+        mp3Stations[stationCount].name = _strdup(dirName.c_str());
+        mp3Stations[stationCount].playlist = _strdup(fullPath.c_str());
+        mp3Stations[stationCount].showTitle = true;
+        mp3Stations[stationCount].fade = 200;
+        mp3Stations[stationCount].shuffle = false;
+        mp3Stations[stationCount].mp3Start = nullptr;
+        mp3Stations[stationCount].trackCount = 0;
+        mp3Stations[stationCount].currentTrack = 0;
+        mp3Stations[stationCount].lastPositionMs = 0;
+        mp3Stations[stationCount].lastSwitchTimeMs = ProcessHelper::GetTime();
+        stationCount++;
     }
 }
 
@@ -183,10 +185,10 @@ void WalkmanState::SetListActive(bool active) {
 #endif
 }
 
-bool InputHandler::oldKeyState[256] = { false };
-
 void WalkmanState::ProcessInput() {
-    if (InputHandler::IsKeyJustPressed(config.ToggleList)) HandleKeyPress(config.ToggleList);
+    if (InputHandler::IsKeyJustPressed(config.ToggleList)) {
+        HandleKeyPress(config.ToggleList);
+    }
 
     if (listActive) {
 #ifdef GTASA
@@ -202,26 +204,38 @@ void WalkmanState::ProcessInput() {
             }
         }
 #endif
-        if (InputHandler::IsKeyJustPressed(config.ListChoose) || InputHandler::IsKeyJustPressed(VK_RETURN)) HandleKeyPress(VK_RETURN);
-        if (InputHandler::IsKeyJustPressed(config.ListScrollUp) || InputHandler::IsKeyJustPressed(VK_UP)) HandleKeyPress(VK_UP);
-        if (InputHandler::IsKeyJustPressed(config.ListScrollDown) || InputHandler::IsKeyJustPressed(VK_DOWN)) HandleKeyPress(VK_DOWN);
-        if (InputHandler::IsKeyJustPressed(VK_LEFT)) HandleKeyPress(VK_LEFT);
-        if (InputHandler::IsKeyJustPressed(VK_RIGHT)) HandleKeyPress(VK_RIGHT);
+        int listKeys[] = {
+            config.ListChoose, VK_RETURN,
+            config.ListScrollUp, VK_UP,
+            config.ListScrollDown, VK_DOWN,
+            VK_LEFT, VK_RIGHT
+        };
+        for (int key : listKeys) {
+            if (key != 0 && InputHandler::IsKeyJustPressed(key)) {
+                HandleKeyPress(key);
+            }
+        }
     }
     else {
         for (int i = 0x31; i <= 0x39; i++) {
-            if (InputHandler::IsKeyJustPressed(i)) HandleKeyPress(i);
+            if (InputHandler::IsKeyJustPressed(i)) {
+                HandleKeyPress(i);
+            }
         }
-
-        if (InputHandler::IsKeyJustPressed(config.PrevTrack)) HandleKeyPress(config.PrevTrack);
-        if (InputHandler::IsKeyJustPressed(config.NextTrack)) HandleKeyPress(config.NextTrack);
-        if (InputHandler::IsKeyJustPressed(config.ToggleShuffle)) HandleKeyPress(config.ToggleShuffle);
-        if (InputHandler::IsKeyJustPressed(config.VolumeUp)) HandleKeyPress(config.VolumeUp);
-        if (InputHandler::IsKeyJustPressed(config.VolumeDown)) HandleKeyPress(config.VolumeDown);
+        int normalKeys[] = {
+            config.PrevTrack, config.NextTrack,
+            config.ToggleShuffle, config.VolumeUp, config.VolumeDown
+        };
+        for (int key : normalKeys) {
+            if (key != 0 && InputHandler::IsKeyJustPressed(key)) {
+                HandleKeyPress(key);
+            }
+        }
     }
 
     InputHandler::UpdateOldKeyState();
 }
+
 
 void WalkmanState::HandleKeyPress(int key) {
     skipping = 0;

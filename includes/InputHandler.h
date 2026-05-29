@@ -6,9 +6,13 @@ class InputHandler {
 public:
     static bool oldKeyState[256];
 
-    static bool IsKeyJustPressed(unsigned int key);
+    __declspec(noinline) static bool IsKeyJustPressed(unsigned int key);
     static void UpdateOldKeyState();
-    static void ResetKeyState();
+
+
+    static void ResetKeyState() {
+        for (int i = 0; i < 256; i++) oldKeyState[i] = false;
+    }
 
     static bool GetMouseWheelUpJustDown() { return !!(CPad::GetPad(0)->NewMouseControllerState.wheelUp && !CPad::GetPad(0)->OldMouseControllerState.wheelUp); }
     static bool GetMouseWheelDownJustDown() { return !!(CPad::GetPad(0)->NewMouseControllerState.wheelDown && !CPad::GetPad(0)->OldMouseControllerState.wheelDown); }

@@ -5,10 +5,9 @@
 #ifdef GTASA
 #include <string>
 #include <unordered_map>
-#include <fstream>
 #include <vector>
-#include <extensions/Config.h>
 #include <extensions/Paths.h>
+#include "ConfigHelper.h"
 
 class MusicPlayerSaTrackNames {
 public:
@@ -231,54 +230,54 @@ public:
         trackNames[1814] = "Unknown Track 17";
     }
 
+    static inline const std::vector<std::pair<std::string, std::vector<int>>>& GetSections() {
+        static const std::vector<std::pair<std::string, std::vector<int>>> sections = {
+            {"PLAYBACK FM", {46, 53, 60, 67, 74, 81, 88, 95, 102, 116, 123}},
+            {"K-ROSE", {231, 238, 245, 252, 259, 266, 273, 280, 287, 294, 301, 308, 135, 142, 149}},
+            {"K-DST", {365, 372, 379, 386, 393, 400, 407, 414, 421, 428, 435, 442, 449, 456, 463}},
+            {"BOUNCE FM", {513, 520, 527, 534, 541, 547, 554, 561, 564, 570, 577, 584, 591, 598, 605, 612, 619}},
+            {"SF-UR", {827, 834, 841, 848, 855, 862, 869, 876, 883, 890, 897, 904, 911, 918, 925, 932, 939}},
+            {"RADIO LOS SANTOS", {981, 986, 991, 996, 1001, 1006, 1011, 1016, 1021, 1026, 1031, 1036, 1041, 1046, 1051, 1056}},
+            {"RADIO X", {1111, 1118, 1125, 1132, 1139, 1146, 1152, 1158, 1164, 1169, 1176, 1183, 1190, 1195, 1202, 1208}},
+            {"CSR 103.9", {1259, 1266, 1273, 1280, 1287, 1294, 1301, 1308, 1315, 1322, 1329, 1336, 1343, 1350, 1357}},
+            {"K-JAH WEST", {1399, 1406, 1413, 1420, 1427, 1434, 1441, 1448, 1455, 1462, 1469, 1476, 1483}},
+            {"MASTER SOUNDS 98.3", {1542, 1549, 1556, 1563, 1570, 1577, 1584, 1591, 1598, 1605, 1612, 1619, 1625, 1632, 1639, 1645}},
+            {"WCTR", {1706, 1713, 1720, 1727, 1734, 1741, 1748, 1754, 1761, 1768, 1775, 1782, 1787, 1790, 1796, 1803, 1809, 1814}}
+        };
+        return sections;
+    }
+
     static inline void Read() {
         SetDefaults();
 
         std::string path = GAME_PATH("\\scripts\\walkman_tracks.ini");
-        std::ifstream f(path);
-        if (!f.good()) {
-            f.close();
+        ConfigHelper cfg(path);
+        if (!cfg.Exists()) {
             Write();
             return;
         }
-        f.close();
 
-        plugin::config_file ini(path);
-        for (auto& pair : trackNames) {
-            std::string key = std::to_string(pair.first);
-            pair.second = ini[key].asString(pair.second);
+        for (const auto& sec : GetSections()) {
+            for (int id : sec.second) {
+                std::string key = std::to_string(id);
+                std::string val = cfg.ReadString(sec.first.c_str(), key.c_str(), "");
+                if (!val.empty()) {
+                    trackNames[id] = val;
+                }
+            }
         }
     }
 
     static inline void Write() {
         std::string path = GAME_PATH("\\scripts\\walkman_tracks.ini");
-        std::ofstream out(path);
-        if (!out.is_open()) return;
-
-        out << "; WalkMan GTA San Andreas Track Names Configuration\n";
-        out << "; Format: SoundID = \"Track Title\"\n\n";
-
-        auto writeSection = [&](const std::string& name, const std::vector<int>& ids) {
-            out << "[" << name << "]\n";
-            for (int id : ids) {
-                out << id << "=\"" << trackNames[id] << "\"\n";
+        ConfigHelper cfg(path);
+        for (const auto& sec : GetSections()) {
+            for (int id : sec.second) {
+                std::string key = std::to_string(id);
+                cfg.WriteString(sec.first.c_str(), key.c_str(), trackNames[id]);
             }
-            out << "\n";
-        };
-
-        writeSection("PLAYBACK FM", {46, 53, 60, 67, 74, 81, 88, 95, 102, 116, 123});
-        writeSection("K-ROSE", {231, 238, 245, 252, 259, 266, 273, 280, 287, 294, 301, 308, 135, 142, 149});
-        writeSection("K-DST", {365, 372, 379, 386, 393, 400, 407, 414, 421, 428, 435, 442, 449, 456, 463});
-        writeSection("BOUNCE FM", {513, 520, 527, 534, 541, 547, 554, 561, 564, 570, 577, 584, 591, 598, 605, 612, 619});
-        writeSection("SF-UR", {827, 834, 841, 848, 855, 862, 869, 876, 883, 890, 897, 904, 911, 918, 925, 932, 939});
-        writeSection("RADIO LOS SANTOS", {981, 986, 991, 996, 1001, 1006, 1011, 1016, 1021, 1026, 1031, 1036, 1041, 1046, 1051, 1056});
-        writeSection("RADIO X", {1111, 1118, 1125, 1132, 1139, 1146, 1152, 1158, 1164, 1169, 1176, 1183, 1190, 1195, 1202, 1208});
-        writeSection("CSR 103.9", {1259, 1266, 1273, 1280, 1287, 1294, 1301, 1308, 1315, 1322, 1329, 1336, 1343, 1350, 1357});
-        writeSection("K-JAH WEST", {1399, 1406, 1413, 1420, 1427, 1434, 1441, 1448, 1455, 1462, 1469, 1476, 1483});
-        writeSection("MASTER SOUNDS 98.3", {1542, 1549, 1556, 1563, 1570, 1577, 1584, 1591, 1598, 1605, 1612, 1619, 1625, 1632, 1639, 1645});
-        writeSection("WCTR", {1706, 1713, 1720, 1727, 1734, 1741, 1748, 1754, 1761, 1768, 1775, 1782, 1787, 1790, 1796, 1803, 1809, 1814});
-
-        out.close();
+        }
+        cfg.Format("; WalkMan GTA San Andreas Track Names Configuration\n; Format: SoundID = \"Track Title\"\n");
     }
 
     static inline const char* GetRealTrackTitle(int soundId) {
